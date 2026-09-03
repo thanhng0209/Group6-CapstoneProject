@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:printer_farm_test;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false  # tests use ddl-auto instead of migrations, for simplicity/speed
+
+app:
+  jwt:
+    secret: test-only-secret-not-used-in-any-real-environment-1234567890
+    expiration-ms: 3600000

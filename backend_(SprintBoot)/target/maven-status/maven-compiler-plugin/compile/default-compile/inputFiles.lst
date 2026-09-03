@@ -1,0 +1,15 @@
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/PrinterFarmApplication.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/config/SecurityConfig.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/controller/AuthController.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/controller/UserController.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/dto/LoginRequest.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/dto/LoginResponse.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/dto/UserDashboardResponse.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/enums/Role.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/model/User.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/repository/UserRepository.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/security/JwtAuthFilter.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/security/JwtUtil.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/security/UserPrincipal.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/service/CustomUserDetailsService.java
+/Users/apple/Desktop/printer-farm/backend/src/main/java/com/uwa/printerfarm/service/UserService.java
