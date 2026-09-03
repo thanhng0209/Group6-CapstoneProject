@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: printerfarm-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/printerfarm
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+server:
+  port: 8080
