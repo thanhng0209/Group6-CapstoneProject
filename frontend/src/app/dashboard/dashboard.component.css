@@ -1,0 +1,104 @@
+.dashboard {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1f4e79;
+}
+
+.role-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  background: #eef3f8;
+  color: #1f4e79;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.logout-btn {
+  background: none;
+  border: 1px solid #ccd2d8;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.logout-btn:hover {
+  background: #f4f6f8;
+}
+
+.balance-card {
+  background: #1f4e79;
+  color: #fff;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
+}
+
+.balance-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.balance-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.jobs-section {
+  margin-bottom: 2rem;
+}
+
+.jobs-section h2 {
+  font-size: 1rem;
+  color: #333;
+  border-bottom: 1px solid #e2e6ea;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.empty-state {
+  color: #7a8591;
+  font-size: 0.9rem;
+}
+
+.jobs-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.jobs-section li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f0f2f4;
+  font-size: 0.9rem;
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #5a6472;
+}
+
+.error-state {
+  color: #c0392b;
+}
