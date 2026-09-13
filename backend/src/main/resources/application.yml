@@ -1,6 +1,12 @@
 spring:
   application:
     name: printerfarm-backend
+  servlet:
+    multipart:
+      # G-code files from PrusaSlicer are typically 1-20 MB; 50 MB gives
+      # ample headroom while preventing accidental large-file uploads.
+      max-file-size: 50MB
+      max-request-size: 52MB
   datasource:
     url: jdbc:postgresql://localhost:5432/printerfarm
     username: ${DB_USERNAME:postgres}
