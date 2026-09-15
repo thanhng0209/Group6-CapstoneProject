@@ -21,13 +21,16 @@ public class JobSubmissionService {
     private final CostCalculationService costCalculationService;
     private final WalletService walletService;
     private final TransactionLedgerService ledgerService;
+    private final JobRepository jobRepository;
 
     public JobSubmissionService(CostCalculationService costCalculationService,
                                  WalletService walletService,
-                                 TransactionLedgerService ledgerService) {
+                                 TransactionLedgerService ledgerService,
+                                 JobRepository jobRepository) {
         this.costCalculationService = costCalculationService;
         this.walletService = walletService;
         this.ledgerService = ledgerService;
+        this.jobRepository = jobRepository;
     }
 
     public Job submit(Job job) {
@@ -36,6 +39,7 @@ public class JobSubmissionService {
 
         BigDecimal balanceAfter = walletService.debit(job.getOwnerUniId(), cost);
         job.setCost(cost);
+        jobRepository.save(job);
         ledgerService.record(job.getOwnerUniId(), job.getId(), TransactionType.DEBIT, cost, balanceAfter,
                 "Job submission charge for printer " + job.getPrinterId());
 
