@@ -34,6 +34,11 @@ printerfarm:
     default-starting-balance: 50.00
   notification:
     from-address: printerfarm-noreply@uwa.edu.au
-    # Placeholder mapping from UNI ID to email until Person 1's auth/user
-    # module exposes each student's actual registered UWA email address.
+    # Placeholder mapping from UNI ID to email until the auth/user module
+    # exposes each student's actual registered UWA email address.
     email-domain: "@student.uwa.edu.au"
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:this-is-a-placeholder-secret-change-me-before-deploying-1234567890}
+    expiration-ms: 86400000

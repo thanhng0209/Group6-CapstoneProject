@@ -1,0 +1,42 @@
+<div class="dashboard" *ngIf="!isLoading && dashboard">
+  <header class="dashboard-header">
+    <div>
+      <h1>Welcome, {{ dashboard.fullName }}</h1>
+      <p class="role-badge">{{ dashboard.role }}</p>
+    </div>
+    <button class="logout-btn" (click)="logout()">Sign out</button>
+  </header>
+
+  <section class="balance-card">
+    <span class="balance-label">Account balance</span>
+    <span class="balance-value">${{ dashboard.balance.toFixed(2) }}</span>
+  </section>
+
+  <section class="jobs-section">
+    <h2>Current Jobs</h2>
+    <p class="empty-state" *ngIf="dashboard.currentJobs.length === 0">
+      No active print jobs right now.
+    </p>
+    <ul *ngIf="dashboard.currentJobs.length > 0">
+      <li *ngFor="let job of dashboard.currentJobs">
+        {{ job.fileName }} — {{ job.printerName }} — {{ job.status }}
+      </li>
+    </ul>
+  </section>
+
+  <section class="jobs-section">
+    <h2>Print History</h2>
+    <p class="empty-state" *ngIf="dashboard.printHistory.length === 0">
+      You haven't submitted any print jobs yet.
+    </p>
+    <ul *ngIf="dashboard.printHistory.length > 0">
+      <li *ngFor="let job of dashboard.printHistory">
+        {{ job.fileName }} — {{ job.printerName }} — {{ job.status }} — {{ job.submittedAt }}
+      </li>
+    </ul>
+  </section>
+</div>
+
+<div class="loading-state" *ngIf="isLoading">Loading your dashboard...</div>
+
+<div class="error-state" *ngIf="errorMessage">{{ errorMessage }}</div>

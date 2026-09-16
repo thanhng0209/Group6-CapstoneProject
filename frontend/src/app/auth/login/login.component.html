@@ -1,0 +1,47 @@
+<div class="login-container">
+  <div class="login-card">
+    <h1>UWA Printer Farm</h1>
+    <p class="subtitle">Sign in with your UNI ID to continue</p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div class="form-field">
+        <label for="uniId">UNI ID</label>
+        <input
+          id="uniId"
+          type="text"
+          formControlName="uniId"
+          placeholder="e.g. 24726476"
+          autocomplete="username"
+        />
+        <span
+          class="field-error"
+          *ngIf="loginForm.get('uniId')?.touched && loginForm.get('uniId')?.invalid"
+        >
+          UNI ID is required.
+        </span>
+      </div>
+
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        <span
+          class="field-error"
+          *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
+        >
+          Password is required.
+        </span>
+      </div>
+
+      <div class="server-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <button type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Signing in...' : 'Sign In' }}
+      </button>
+    </form>
+  </div>
+</div>
