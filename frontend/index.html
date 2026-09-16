@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>G-code Upload | UWA 3D Print Farm</title>
+  <meta name="description" content="Upload your PrusaSlicer G-code file to validate compatibility with UWA Print Farm printers before submitting a print job." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────── */
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface-2:  #1c2330;
+      --border:     #30363d;
+      --primary:    #4f8ef7;
+      --primary-dk: #3b75d9;
+      --success:    #2ea043;
+      --success-bg: #0d2a13;
+      --success-bd: #2ea043;
+      --error:      #f85149;
+      --error-bg:   #2a0d0d;
+      --error-bd:   #f85149;
+      --warning:    #d29922;
+      --warning-bg: #2a1d00;
+      --text:       #e6edf3;
+      --text-muted: #7d8590;
+      --radius:     12px;
+      --radius-sm:  8px;
+      --shadow:     0 8px 32px rgba(0,0,0,.5);
+    }
+
+    /* ── Reset & base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79,142,247,.12), transparent);
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      max-width: 640px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 1.2rem;
+    }
+    .logo svg { width: 24px; height: 24px; }
+    h1 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: .6rem;
+    }
+    h1 span { color: var(--primary); }
+    .subtitle { color: var(--text-muted); font-size: .95rem; line-height: 1.6; }
+
+    /* ── Card ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: var(--shadow);
+    }
+    .card + .card { margin-top: 1.5rem; }
+
+    /* ── Section labels ────────────────────────────────────────────────── */
+    .section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .75rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    /* ── Printer selector ──────────────────────────────────────────────── */
+    .printer-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .printer-label { font-size: .9rem; color: var(--text-muted); white-space: nowrap; }
+    select#printerSelect {
+      flex: 1;
+      min-width: 200px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      padding: .6rem 1rem;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237d8590'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      background-size: 20px;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    select#printerSelect:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,142,247,.2);
+    }
+
+    /* ── Drop zone ─────────────────────────────────────────────────────── */
+    #dropZone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s, transform .1s;
+      position: relative;
+    }
+    #dropZone:hover, #dropZone.drag-over {
+      border-color: var(--primary);
+      background: rgba(79,142,247,.05);
+    }
+    #dropZone.drag-over { transform: scale(1.01); }
+    #dropZone.has-file {
+      border-color: var(--success);
+      background: rgba(46,160,67,.05);
+    }
+    .drop-icon {
+      width: 52px; height: 52px;
+      margin: 0 auto 1rem;
+      color: var(--text-muted);
+      transition: color .2s, transform .3s;
+    }
+    #dropZone:hover .drop-icon, #dropZone.drag-over .drop-icon {
+      color: var(--primary);
+      transform: translateY(-4px);
+    }
+    #dropZone.has-file .drop-icon { color: var(--success); }
+    .drop-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: .4rem;
+    }
+    .drop-subtitle {
+      font-size: .85rem;
+      color: var(--text-muted);
+    }
+    .drop-subtitle strong { color: var(--primary); cursor: pointer; }
+    .drop-subtitle strong:hover { text-decoration: underline; }
+    #fileInput { display: none; }
+
+    /* file info pill */
+    #fileInfo {
+      display: none;
+      align-items: center;
+      gap: .6rem;
+      background: var(--surface-2);
+      border-radius: 100px;
+      padding: .4rem .9rem;
+      font-size: .85rem;
+      margin-top: 1rem;
+    }
+    #fileInfo.show { display: inline-flex; }
+    #fileInfo .fi-name { font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #fileInfo .fi-size { color: var(--text-muted); }
+    #fileInfo .fi-clear {
+      cursor: pointer; color: var(--text-muted); line-height: 1;
+      border: none; background: none; font-size: 1.1rem; padding: 0;
+      transition: color .15s;
+    }
+    #fileInfo .fi-clear:hover { color: var(--error); }
+
+    /* ── Upload button ─────────────────────────────────────────────────── */
+    #uploadBtn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: .85rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--primary);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, transform .1s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    #uploadBtn:hover:not(:disabled) {
+      background: var(--primary-dk);
+      box-shadow: 0 4px 16px rgba(79,142,247,.35);
+    }
+    #uploadBtn:active:not(:disabled) { transform: scale(.98); }
+    #uploadBtn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      position: absolute;
+      right: 1.25rem;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    /* ── Result panel ──────────────────────────────────────────────────── */
+    #resultPanel { display: none; }
+    #resultPanel.show { display: block; animation: fadeUp .35s ease; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+    .result-status {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .result-status.pass {
+      background: var(--success-bg);
+      border: 1px solid var(--success-bd);
+      color: var(--success);
+    }
+    .result-status.fail {
+      background: var(--error-bg);
+      border: 1px solid var(--error-bd);
+      color: var(--error);
+    }
+    .status-icon { font-size: 1.4rem; }
+
+    /* param grid */
+    .param-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .75rem;
+      margin-bottom: 1.5rem;
+    }
+    .param-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .75rem 1rem;
+    }
+    .param-key {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .25rem;
+    }
+    .param-val {
+      font-size: .95rem;
+      font-weight: 500;
+      word-break: break-all;
+    }
+    .param-val.missing { color: var(--text-muted); font-style: italic; }
+
+    /* error list */
+    .error-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; }
+    .error-list li {
+      display: flex;
+      gap: .5rem;
+      align-items: flex-start;
+      padding: .65rem .85rem;
+      background: var(--error-bg);
+      border-left: 3px solid var(--error);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: .875rem;
+      line-height: 1.5;
+    }
+    .error-list li::before { content: "✕"; color: var(--error); font-weight: 700; flex-shrink: 0; }
+
+    /* ── Help / tooltip panel ──────────────────────────────────────────── */
+    .help-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: .85rem;
+      padding: .45rem .85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      transition: border-color .2s, color .2s;
+    }
+    .help-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .help-panel {
+      display: none;
+      margin-top: 1rem;
+      padding: 1.25rem;
+      background: var(--warning-bg);
+      border: 1px solid var(--warning);
+      border-radius: var(--radius-sm);
+      font-size: .875rem;
+      line-height: 1.7;
+    }
+    .help-panel.show { display: block; animation: fadeUp .25s ease; }
+    .help-panel h3 { color: var(--warning); margin-bottom: .75rem; font-size: .9rem; }
+    .help-panel code {
+      background: rgba(0,0,0,.3);
+      border-radius: 4px;
+      padding: .1em .4em;
+      font-size: .82rem;
+      color: #d2a44f;
+    }
+    .help-panel ol { margin: .5rem 0 .5rem 1.25rem; }
+    .help-panel li { margin-bottom: .25rem; }
+    .help-panel .required-badge {
+      display: inline-block;
+      background: var(--error);
+      color: #fff;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: .1em .45em;
+      margin-left: .3em;
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 520px) {
+      .card { padding: 1.25rem; }
+      h1 { font-size: 1.5rem; }
+      .param-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+        <line x1="12" y1="22" x2="12" y2="15.5"/>
+        <polyline points="22 8.5 12 15.5 2 8.5"/>
+      </svg>
+      UWA 3D Print Farm
+    </div>
+    <h1>G-code <span>Compatibility</span> Check</h1>
+    <p class="subtitle">
+      Upload your PrusaSlicer <code style="background:rgba(255,255,255,.08);border-radius:4px;padding:.1em .4em;font-size:.85em">.gcode</code> file
+      to verify it is compatible with your selected printer before submitting a print job.
+    </p>
+  </header>
+
+  <!-- ── Step 1: Printer selection + help ─────────────────────────── -->
+  <div class="card">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Step 1 — Select printer
+    </div>
+    <div class="printer-row">
+      <label class="printer-label" for="printerSelect">Target printer:</label>
+      <select id="printerSelect">
+        <option value="">— Choose a printer —</option>
+        <option value="PRUSA_XL">Prusa XL</option>
+        <option value="PRUSA_CORE_ONE">Prusa Core One</option>
+        <option value="PRUSA_MK4S">Prusa MK4S</option>
+      </select>
+    </div>
+
+    <!-- PrusaSlicer export help -->
+    <div style="margin-top:1.25rem;">
+      <button class="help-toggle" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpPanel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        PrusaSlicer export settings guide
+      </button>
+      <div class="help-panel" id="helpPanel" role="region" aria-labelledby="helpToggle">
+        <h3>⚠ Required PrusaSlicer Export Settings</h3>
+        <p><strong>Binary G-code must be disabled</strong><span class="required-badge">Required</span></p>
+        <ol>
+          <li>Open PrusaSlicer and load your model.</li>
+          <li>Go to <strong>Print Settings → Output options</strong>.</li>
+          <li>Find <strong>"Binary G-code"</strong> and <strong>uncheck</strong> it.<br/>
+              <em>(It is enabled by default in PrusaSlicer 2.7+. If left on, the upload will be rejected.)</em></li>
+          <li>Export: <strong>File → Export → Export G-code</strong> (save as <code>.gcode</code>).</li>
+        </ol>
+        <p style="margin-top:.75rem"><strong>Recommended settings for complete metadata:</strong></p>
+        <ol>
+          <li><strong>Print Settings → Output options → "Add machine limits comments"</strong> → ✅ Enabled</li>
+          <li><strong>Print Settings → Output options → "Verbose G-code"</strong> → optional but helpful</li>
+          <li>Ensure the correct <strong>printer profile</strong> is selected in the top drop-down before slicing
+              — the profile name is embedded in the G-code and must match your selection above.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2: File upload ───────────────────────────────────────── -->
+  <div class="card">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      Step 2 — Upload G-code file
+    </div>
+
+    <div id="dropZone" role="button" tabindex="0" aria-label="Drop zone: drag and drop your G-code file or click to browse">
+      <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <line x1="9" y1="15" x2="15" y2="15"/>
+      </svg>
+      <p class="drop-title">Drag &amp; drop your .gcode file here</p>
+      <p class="drop-subtitle">or <strong id="browseLink">browse to upload</strong> &nbsp;·&nbsp; max 50 MB</p>
+      <input type="file" id="fileInput" accept=".gcode" aria-label="File input" />
+      <div id="fileInfo">
+        <span class="fi-name" id="fiName"></span>
+        <span class="fi-size" id="fiSize"></span>
+        <button class="fi-clear" id="fiClear" aria-label="Remove file">✕</button>
+      </div>
+    </div>
+
+    <button id="uploadBtn" type="button" disabled>
+      <span id="btnText">Validate G-code</span>
+      <span class="btn-spinner" id="btnSpinner"></span>
+    </button>
+  </div>
+
+  <!-- ── Step 3: Results ───────────────────────────────────────────── -->
+  <div class="card" id="resultPanel" aria-live="polite">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Step 3 — Validation results
+    </div>
+
+    <!-- Status banner -->
+    <div class="result-status" id="resultStatus">
+      <span class="status-icon" id="statusIcon"></span>
+      <span id="statusText"></span>
+    </div>
+
+    <!-- Compatibility errors -->
+    <div id="errorsSection" style="display:none; margin-bottom:1.5rem;">
+      <div class="section-label" style="margin-bottom:.6rem">Compatibility issues</div>
+      <ul class="error-list" id="errorList"></ul>
+    </div>
+
+    <!-- Extracted parameters -->
+    <div class="section-label" style="margin-bottom:.75rem">Extracted G-code parameters</div>
+    <div class="param-grid" id="paramGrid"></div>
+  </div>
+
+  <script>
+    // ── Constants ────────────────────────────────────────────────────────────
+    const API_BASE = 'http://localhost:8080';
+    const MAX_SIZE = 50 * 1024 * 1024;
+
+    // ── Element refs ─────────────────────────────────────────────────────────
+    const dropZone    = document.getElementById('dropZone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileInfo    = document.getElementById('fileInfo');
+    const fiName      = document.getElementById('fiName');
+    const fiSize      = document.getElementById('fiSize');
+    const fiClear     = document.getElementById('fiClear');
+    const browseLink  = document.getElementById('browseLink');
+    const uploadBtn   = document.getElementById('uploadBtn');
+    const btnText     = document.getElementById('btnText');
+    const btnSpinner  = document.getElementById('btnSpinner');
+    const printerSel  = document.getElementById('printerSelect');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultStatus= document.getElementById('resultStatus');
+    const statusIcon  = document.getElementById('statusIcon');
+    const statusText  = document.getElementById('statusText');
+    const errorsSection=document.getElementById('errorsSection');
+    const errorList   = document.getElementById('errorList');
+    const paramGrid   = document.getElementById('paramGrid');
+    const helpToggle  = document.getElementById('helpToggle');
+    const helpPanel   = document.getElementById('helpPanel');
+
+    let selectedFile = null;
+
+    // ── Drag & Drop ──────────────────────────────────────────────────────────
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    dropZone.addEventListener('click', e => { if (e.target !== fiClear) fileInput.click(); });
+    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+    browseLink.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    // ── File handling ────────────────────────────────────────────────────────
+    function handleFile(file) {
+      // Client-side extension check
+      if (!file.name.toLowerCase().endsWith('.gcode')) {
+        showToast('Only .gcode files are accepted.', 'error');
+        return;
+      }
+      // Client-side size check
+      if (file.size > MAX_SIZE) {
+        showToast('File exceeds 50 MB limit.', 'error');
+        return;
+      }
+      selectedFile = file;
+      fiName.textContent = file.name;
+      fiSize.textContent = formatBytes(file.size);
+      fileInfo.classList.add('show');
+      dropZone.classList.add('has-file');
+      updateBtn();
+    }
+
+    fiClear.addEventListener('click', e => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.classList.remove('show');
+      dropZone.classList.remove('has-file');
+      resultPanel.classList.remove('show');
+      updateBtn();
+    }
+
+    // ── Printer selection ────────────────────────────────────────────────────
+    printerSel.addEventListener('change', updateBtn);
+
+    function updateBtn() {
+      uploadBtn.disabled = !(selectedFile && printerSel.value);
+    }
+
+    // ── Upload & validate ─────────────────────────────────────────────────────
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile || !printerSel.value) return;
+
+      setLoading(true);
+      resultPanel.classList.remove('show');
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('printerId', printerSel.value);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/gcode/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          // 400 / 413 from server
+          showError(data.errors || ['An error occurred.']);
+          return;
+        }
+        renderResult(data);
+      } catch (err) {
+        showError([
+          'Could not connect to the Print Farm server. '
+          + 'Please ensure the backend is running on localhost:8080.',
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // ── Render result ────────────────────────────────────────────────────────
+    function renderResult(data) {
+      // Status banner
+      resultStatus.className = 'result-status ' + (data.compatible ? 'pass' : 'fail');
+      statusIcon.textContent = data.compatible ? '✅' : '❌';
+      statusText.textContent = data.compatible
+        ? 'Compatible — this file is ready for the selected printer.'
+        : 'Incompatible — this file cannot be printed on the selected printer.';
+
+      // Errors section
+      if (!data.compatible && data.compatibilityErrors?.length) {
+        errorsSection.style.display = 'block';
+        errorList.innerHTML = data.compatibilityErrors
+          .map(e => `<li>${escHtml(e)}</li>`)
+          .join('');
+      } else {
+        errorsSection.style.display = 'none';
+        errorList.innerHTML = '';
+      }
+
+      // Parameter grid
+      const params = [
+        { key: 'Printer Profile (G-code)', val: data.printerProfileId },
+        { key: 'Material',                 val: data.material },
+        { key: 'Nozzle Diameter',          val: data.nozzleDiameter != null ? data.nozzleDiameter + ' mm' : null },
+        { key: 'Layer Height',             val: data.layerHeight    != null ? data.layerHeight    + ' mm' : null },
+        { key: 'Print Volume X',           val: data.printVolumeX   != null ? data.printVolumeX   + ' mm' : null },
+        { key: 'Print Volume Y',           val: data.printVolumeY   != null ? data.printVolumeY   + ' mm' : null },
+        { key: 'Print Volume Z',           val: data.printVolumeZ   != null ? data.printVolumeZ   + ' mm' : null },
+        { key: 'Nozzle Temp',              val: data.nozzleTemp     != null ? data.nozzleTemp     + ' °C' : null },
+        { key: 'Bed Temp',                 val: data.bedTemp        != null ? data.bedTemp        + ' °C' : null },
+        { key: 'Estimated Weight',         val: data.estimatedGrams != null ? data.estimatedGrams + ' g'  : null },
+        { key: 'Estimated Print Time',     val: data.estimatedMinutes != null ? formatMinutes(data.estimatedMinutes) : null },
+      ];
+      paramGrid.innerHTML = params.map(p => `
+        <div class="param-card">
+          <div class="param-key">${escHtml(p.key)}</div>
+          <div class="param-val ${p.val == null ? 'missing' : ''}">${p.val != null ? escHtml(String(p.val)) : 'Not found in file'}</div>
+        </div>
+      `).join('');
+
+      resultPanel.classList.add('show');
+      resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function showError(messages) {
+      resultStatus.className = 'result-status fail';
+      statusIcon.textContent = '❌';
+      statusText.textContent = 'Upload or parse error';
+      errorsSection.style.display = 'block';
+      errorList.innerHTML = messages.map(e => `<li>${escHtml(e)}</li>`).join('');
+      paramGrid.innerHTML = '';
+      resultPanel.classList.add('show');
+      resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ── Help toggle ──────────────────────────────────────────────────────────
+    helpToggle.addEventListener('click', () => {
+      const open = helpPanel.classList.toggle('show');
+      helpToggle.setAttribute('aria-expanded', String(open));
+    });
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function setLoading(on) {
+      uploadBtn.disabled = on;
+      btnText.textContent = on ? 'Validating…' : 'Validate G-code';
+      btnSpinner.style.display = on ? 'block' : 'none';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function formatMinutes(mins) {
+      const m = parseFloat(mins);
+      const h = Math.floor(m / 60);
+      const rem = Math.round(m % 60);
+      return h > 0 ? `${h}h ${rem}m` : `${rem}m`;
+    }
+
+    function escHtml(str) {
+      return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function showToast(msg, type) {
+      // Simple inline alert as toast fallback
+      alert((type === 'error' ? '⚠ ' : '') + msg);
+    }
+
+    // ── Try to populate printer list from API on load ────────────────────────
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/gcode/printers`);
+        if (res.ok) {
+          const printers = await res.json();
+          printerSel.innerHTML = '<option value="">— Choose a printer —</option>';
+          printers.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.displayName;
+            printerSel.appendChild(opt);
+          });
+        }
+      } catch (_) {
+        // Fallback to hardcoded options already in HTML
+      }
+    })();
+  </script>
+</body>
+</html>

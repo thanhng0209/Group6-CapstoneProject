@@ -94,4 +94,8 @@ public class Job {
     void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
     }
+
+    void assignId(long id) {
+        this.id = id;
+    }
 }
