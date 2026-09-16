@@ -18,3 +18,9 @@ printerfarm:
     cancellation-window-minutes: 5
   wallet:
     default-starting-balance: 50.00
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:this-is-a-placeholder-secret-change-me-before-deploying-1234567890}
+    expiration-ms: 86400000
+
