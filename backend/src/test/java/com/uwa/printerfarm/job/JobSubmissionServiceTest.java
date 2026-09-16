@@ -17,8 +17,9 @@ class JobSubmissionServiceTest {
     private final CostCalculationService costCalculationService = new CostCalculationService();
     private final WalletService walletService = new WalletService(new BigDecimal("50.00"));
     private final TransactionLedgerService ledgerService = new TransactionLedgerService();
+    private final JobRepository jobRepository = new JobRepository();
     private final JobSubmissionService submissionService =
-            new JobSubmissionService(costCalculationService, walletService, ledgerService);
+            new JobSubmissionService(costCalculationService, walletService, ledgerService, jobRepository);
 
     private Job newJob(BigDecimal grams, BigDecimal minutes) {
         return new Job("22345678", "prusa-xl-1", "PLA", grams, minutes);
@@ -32,12 +33,15 @@ class JobSubmissionServiceTest {
 
         assertThat(job.getCost()).isEqualByComparingTo("6.20");
         assertThat(walletService.getBalance("22345678")).isEqualByComparingTo("43.80");
+        assertThat(job.getId()).isNotNull();
+        assertThat(jobRepository.findAll()).containsExactly(job);
 
         assertThat(ledgerService.history("22345678")).hasSize(1);
         var transaction = ledgerService.history("22345678").get(0);
         assertThat(transaction.getType()).isEqualTo(TransactionType.DEBIT);
         assertThat(transaction.getAmount()).isEqualByComparingTo("6.20");
         assertThat(transaction.getBalanceAfter()).isEqualByComparingTo("43.80");
+        assertThat(transaction.getJobId()).isEqualTo(job.getId());
     }
 
     @Test
@@ -48,6 +52,8 @@ class JobSubmissionServiceTest {
                 .isInstanceOf(InsufficientBalanceException.class);
 
         assertThat(job.getCost()).isNull();
+        assertThat(job.getId()).isNull();
+        assertThat(jobRepository.findAll()).isEmpty();
         assertThat(walletService.getBalance("22345678")).isEqualByComparingTo("50.00");
         assertThat(ledgerService.history("22345678")).isEmpty();
     }
