@@ -1,41 +1,94 @@
 package com.uwa.printerfarm.wallet;
 
+import com.uwa.printerfarm.enums.Role;
+import com.uwa.printerfarm.model.User;
+import com.uwa.printerfarm.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class WalletServiceTest {
 
-    private final WalletService walletService = new WalletService(new BigDecimal("50.00"));
+    @Mock
+    private UserRepository userRepository;
+
+    private WalletService walletService;
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        walletService = new WalletService(userRepository, new BigDecimal("50.00"));
+        testUser = User.builder()
+                .uniId("22345678")
+                .balanceCents(5000L) // $50.00
+                .email("22345678@student.uwa.edu.au")
+                .fullName("Test Student")
+                .role(Role.STUDENT)
+                .build();
+    }
 
     @Test
-    void newStudentStartsWithDefaultBalance() {
+    void studentReturnsExistingBalance() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
         assertThat(walletService.getBalance("22345678")).isEqualByComparingTo("50.00");
     }
 
     @Test
-    void debitReducesBalance() {
-        BigDecimal balanceAfter = walletService.debit("22345678", new BigDecimal("6.20"));
+    void newStudentAutoProvisionsWithDefaultBalance() {
+        when(userRepository.findByUniId("99999999")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(balanceAfter).isEqualByComparingTo("43.80");
-        assertThat(walletService.getBalance("22345678")).isEqualByComparingTo("43.80");
+        BigDecimal balance = walletService.getBalance("99999999");
+
+        assertThat(balance).isEqualByComparingTo("50.00");
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getBalanceCents()).isEqualTo(5000L);
     }
 
     @Test
-    void creditIncreasesBalance() {
+    void debitReducesBalanceAndSavesToDatabase() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
+        BigDecimal balanceAfter = walletService.debit("22345678", new BigDecimal("6.20"));
+
+        assertThat(balanceAfter).isEqualByComparingTo("43.80");
+        assertThat(testUser.getBalanceCents()).isEqualTo(4380L);
+        verify(userRepository).save(testUser);
+    }
+
+    @Test
+    void creditIncreasesBalanceAndSavesToDatabase() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
         BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"));
 
         assertThat(balanceAfter).isEqualByComparingTo("60.00");
+        assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
+        verify(userRepository).save(testUser);
     }
 
     @Test
     void debitBeyondBalanceThrowsAndLeavesBalanceUnchanged() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
         assertThatThrownBy(() -> walletService.debit("22345678", new BigDecimal("999.00")))
                 .isInstanceOf(InsufficientBalanceException.class);
 
-        assertThat(walletService.getBalance("22345678")).isEqualByComparingTo("50.00");
+        assertThat(testUser.getBalanceCents()).isEqualTo(5000L);
     }
 }

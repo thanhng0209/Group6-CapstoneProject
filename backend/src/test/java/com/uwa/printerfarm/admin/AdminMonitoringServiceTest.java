@@ -1,54 +1,66 @@
 package com.uwa.printerfarm.admin;
 
-import com.uwa.printerfarm.cost.CostCalculationService;
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobLifecycleService;
 import com.uwa.printerfarm.job.JobRepository;
 import com.uwa.printerfarm.job.JobStatus;
-import com.uwa.printerfarm.job.JobSubmissionService;
 import com.uwa.printerfarm.job.RefundRequest;
 import com.uwa.printerfarm.job.RefundService;
+import com.uwa.printerfarm.wallet.Transaction;
 import com.uwa.printerfarm.wallet.TransactionLedgerService;
-import com.uwa.printerfarm.wallet.WalletService;
+import com.uwa.printerfarm.wallet.TransactionType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class AdminMonitoringServiceTest {
 
-    private final CostCalculationService costCalculationService = new CostCalculationService();
-    private final WalletService walletService = new WalletService(new BigDecimal("1000.00"));
-    private final TransactionLedgerService ledgerService = new TransactionLedgerService();
-    private final JobRepository jobRepository = new JobRepository();
-    private final JobSubmissionService submissionService =
-            new JobSubmissionService(costCalculationService, walletService, ledgerService, jobRepository);
-    private final JobLifecycleService jobLifecycleService = new JobLifecycleService(5);
-    private final RefundService refundService = new RefundService(jobLifecycleService, walletService, ledgerService);
-    private final AdminMonitoringService monitoringService =
-            new AdminMonitoringService(jobRepository, ledgerService, refundService);
+    @Mock
+    private JobRepository jobRepository;
 
-    private Job submitJob(String printerId, String material, BigDecimal grams) {
-        Job job = new Job("22345678", printerId, material, grams, new BigDecimal("60"));
-        return submissionService.submit(job);
+    @Mock
+    private TransactionLedgerService ledgerService;
+
+    @Mock
+    private RefundService refundService;
+
+    private AdminMonitoringService monitoringService;
+    private final JobLifecycleService jobLifecycleService = new JobLifecycleService(5);
+
+    @BeforeEach
+    void setUp() {
+        monitoringService = new AdminMonitoringService(jobRepository, ledgerService, refundService);
+    }
+
+    private Job createJob(String printerId, String material, BigDecimal grams) {
+        return new Job("22345678", printerId, material, grams, new BigDecimal("60"));
     }
 
     @Test
     void jobsWithNoFilterReturnsEverySubmittedJob() {
-        Job first = submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
-        Job second = submitJob("prusa-xl-1", "PLA", new BigDecimal("50"));
+        Job first = createJob("prusa-xl-1", "PLA", new BigDecimal("100"));
+        Job second = createJob("prusa-xl-1", "PLA", new BigDecimal("50"));
+        when(jobRepository.findAll()).thenReturn(List.of(first, second));
 
         assertThat(monitoringService.jobs(null)).containsExactlyInAnyOrder(first, second);
     }
 
     @Test
     void jobsCanBeFilteredByStatus() {
-        Job queued = submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
-        Job printing = submitJob("prusa-xl-1", "PLA", new BigDecimal("50"));
+        Job queued = createJob("prusa-xl-1", "PLA", new BigDecimal("100"));
+        Job printing = createJob("prusa-xl-1", "PLA", new BigDecimal("50"));
         jobLifecycleService.transition(printing, JobStatus.PRINTING);
+        when(jobRepository.findAll()).thenReturn(List.of(queued, printing));
 
         assertThat(monitoringService.jobs(JobStatus.QUEUED)).containsExactly(queued);
         assertThat(monitoringService.jobs(JobStatus.PRINTING)).containsExactly(printing);
@@ -56,10 +68,12 @@ class AdminMonitoringServiceTest {
 
     @Test
     void filamentUsageSumsByMaterialAndExcludesCancelledJobs() {
-        submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
-        submitJob("prusa-xl-1", "PETG", new BigDecimal("40"));
-        Job cancelled = submitJob("prusa-xl-1", "PLA", new BigDecimal("50"));
-        refundService.cancelAndRefund(cancelled, cancelled.getQueuedAt().plusSeconds(30));
+        Job job1 = createJob("prusa-xl-1", "PLA", new BigDecimal("100"));
+        Job job2 = createJob("prusa-xl-1", "PETG", new BigDecimal("40"));
+        Job cancelled = createJob("prusa-xl-1", "PLA", new BigDecimal("50"));
+        jobLifecycleService.cancel(cancelled, cancelled.getQueuedAt().plusSeconds(30));
+
+        when(jobRepository.findAll()).thenReturn(List.of(job1, job2, cancelled));
 
         var usage = monitoringService.filamentUsageByMaterial();
 
@@ -69,24 +83,28 @@ class AdminMonitoringServiceTest {
 
     @Test
     void costSummaryAggregatesChargesAndRefunds() {
-        Job kept = submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
-        Job refunded = submitJob("prusa-xl-1", "PLA", new BigDecimal("50"));
-        refundService.cancelAndRefund(refunded, refunded.getQueuedAt().plusSeconds(30));
+        Transaction charge = new Transaction("22345678", 1L, TransactionType.DEBIT,
+                new BigDecimal("6.20"), new BigDecimal("43.80"), Instant.now(), "Job charge");
+        Transaction refund = new Transaction("22345678", 2L, TransactionType.REFUND,
+                new BigDecimal("2.10"), new BigDecimal("45.90"), Instant.now(), "Job refund");
+
+        when(ledgerService.all()).thenReturn(List.of(charge, refund));
 
         CostSummary summary = monitoringService.costSummary();
 
-        BigDecimal expectedCharged = kept.getCost().add(refunded.getCost());
-        assertThat(summary.getTotalCharged()).isEqualByComparingTo(expectedCharged);
-        assertThat(summary.getTotalRefunded()).isEqualByComparingTo(refunded.getCost());
-        assertThat(summary.getNetRevenue()).isEqualByComparingTo(expectedCharged.subtract(refunded.getCost()));
+        assertThat(summary.getTotalCharged()).isEqualByComparingTo("6.20");
+        assertThat(summary.getTotalRefunded()).isEqualByComparingTo("2.10");
+        assertThat(summary.getNetRevenue()).isEqualByComparingTo("4.10");
     }
 
     @Test
     void printerActivityGroupsJobCountsByPrinterAndStatus() {
-        Job queuedOnXl = submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
-        Job printingOnXl = submitJob("prusa-xl-1", "PLA", new BigDecimal("50"));
+        Job queuedOnXl = createJob("prusa-xl-1", "PLA", new BigDecimal("100"));
+        Job printingOnXl = createJob("prusa-xl-1", "PLA", new BigDecimal("50"));
         jobLifecycleService.transition(printingOnXl, JobStatus.PRINTING);
-        submitJob("prusa-core-1", "PETG", new BigDecimal("30"));
+        Job queuedOnCore = createJob("prusa-core-1", "PETG", new BigDecimal("30"));
+
+        when(jobRepository.findAll()).thenReturn(List.of(queuedOnXl, printingOnXl, queuedOnCore));
 
         var activity = monitoringService.printerActivity();
 
@@ -100,15 +118,13 @@ class AdminMonitoringServiceTest {
                 .filter(printer -> printer.getPrinterId().equals("prusa-core-1"))
                 .findFirst().orElseThrow();
         assertThat(coreActivity.getJobCountsByStatus().get(JobStatus.QUEUED)).isEqualTo(1L);
-        assertThat(queuedOnXl.getStatus()).isEqualTo(JobStatus.QUEUED);
     }
 
     @Test
     void pendingRefundRequestsDelegatesToRefundService() {
-        Job job = submitJob("prusa-xl-1", "PLA", new BigDecimal("100"));
+        RefundRequest request = new RefundRequest(1L, 10L, "22345678", new BigDecimal("6.20"), Instant.now());
+        when(refundService.pending()).thenReturn(List.of(request));
 
-        Optional<RefundRequest> created = refundService.cancelAndRefund(job, job.getQueuedAt().plus(Duration.ofMinutes(10)));
-
-        assertThat(monitoringService.pendingRefundRequests()).containsExactly(created.orElseThrow());
+        assertThat(monitoringService.pendingRefundRequests()).containsExactly(request);
     }
 }

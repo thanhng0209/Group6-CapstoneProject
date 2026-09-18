@@ -1,41 +1,40 @@
 package com.uwa.printerfarm.wallet;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
- * Append-only ledger of wallet transactions. Deliberately exposes no update or
- * delete operation: the MVP requires an immutable transaction history, so once
- * a transaction is recorded here it is permanent.
+ * Append-only ledger of wallet transactions backed by PostgreSQL.
+ * Deliberately exposes no update or delete operations:
+ * once a transaction is recorded here, it is permanent.
  */
 @Service
 public class TransactionLedgerService {
 
-    private final AtomicLong sequence = new AtomicLong();
-    private final List<Transaction> transactions = new CopyOnWriteArrayList<>();
+    private final TransactionRepository transactionRepository;
 
+    public TransactionLedgerService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
+    }
+
+    @Transactional
     public Transaction record(String ownerUniId, Long jobId, TransactionType type,
                                BigDecimal amount, BigDecimal balanceAfter, String description) {
-        Transaction transaction = new Transaction(sequence.incrementAndGet(), ownerUniId, jobId, type,
-                amount, balanceAfter, Instant.now(), description);
-        transactions.add(transaction);
-        return transaction;
+        Transaction transaction = new Transaction(
+                ownerUniId, jobId, type, amount, balanceAfter, Instant.now(), description
+        );
+        return transactionRepository.save(transaction);
     }
 
     public List<Transaction> history(String ownerUniId) {
-        return transactions.stream()
-                .filter(transaction -> transaction.getOwnerUniId().equals(ownerUniId))
-                .collect(Collectors.toUnmodifiableList());
+        return transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(ownerUniId);
     }
 
     public List<Transaction> all() {
-        return Collections.unmodifiableList(transactions);
+        return transactionRepository.findAllByOrderByOccurredAtDesc();
     }
 }
