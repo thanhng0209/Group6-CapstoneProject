@@ -84,3 +84,13 @@ CREATE TABLE refund_requests (
 CREATE INDEX idx_refund_requests_job_id ON refund_requests (job_id);
 CREATE INDEX idx_refund_requests_owner_uni_id ON refund_requests (owner_uni_id);
 CREATE INDEX idx_refund_requests_status ON refund_requests (status);
+
+-- ============================================================================
+-- 5. SEED DATA: MOCK PRINTERS
+-- Inserts 3 initial physical printers corresponding to supported Prusa profiles.
+-- ============================================================================
+INSERT INTO printers (id, name, model, status, current_material, current_colour)
+VALUES
+    ('PRUSA_XL_1', 'Prusa XL (Dual Tool)', 'PRUSA_XL', 'IDLE', 'PLA', 'Prusa Orange'),
+    ('PRUSA_MK4S_1', 'Prusa MK4S #1', 'PRUSA_MK4S', 'IDLE', 'PETG', 'Galaxy Black'),
+    ('PRUSA_CORE_ONE_1', 'Prusa Core One #1', 'PRUSA_CORE_ONE', 'IDLE', 'PLA', 'White');
