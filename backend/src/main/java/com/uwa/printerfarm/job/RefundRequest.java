@@ -1,33 +1,67 @@
 package com.uwa.printerfarm.job;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
  * A refund that fell outside the auto-refund cancellation window and is
- * awaiting farm-manager approval (MVP acceptance criteria: out-of-window
- * cancellations must be routed to a second-approval workflow rather than
- * refunded directly).
+ * awaiting farm-manager approval.
+ * Mapped to the 'refund_requests' table in PostgreSQL.
  */
+@Entity
+@Table(name = "refund_requests")
 public class RefundRequest {
 
-    private final long id;
-    private final Long jobId;
-    private final String ownerUniId;
-    private final BigDecimal amount;
-    private final Instant requestedAt;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "job_id", nullable = false)
+    private Long jobId;
+
+    @Column(name = "owner_uni_id", nullable = false, length = 20)
+    private String ownerUniId;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
     private RefundStatus status = RefundStatus.PENDING_APPROVAL;
+
+    @Column(name = "requested_at", nullable = false)
+    private Instant requestedAt = Instant.now();
+
+    @Column(name = "decided_at")
     private Instant decidedAt;
 
-    RefundRequest(long id, Long jobId, String ownerUniId, BigDecimal amount, Instant requestedAt) {
-        this.id = id;
+    protected RefundRequest() {
+        // required by JPA
+    }
+
+    public RefundRequest(Long jobId, String ownerUniId, BigDecimal amount, Instant requestedAt) {
         this.jobId = jobId;
         this.ownerUniId = ownerUniId;
         this.amount = amount;
-        this.requestedAt = requestedAt;
+        this.requestedAt = requestedAt != null ? requestedAt : Instant.now();
+        this.status = RefundStatus.PENDING_APPROVAL;
     }
 
-    public long getId() {
+    public RefundRequest(Long id, Long jobId, String ownerUniId, BigDecimal amount, Instant requestedAt) {
+        this(jobId, ownerUniId, amount, requestedAt);
+        this.id = id;
+    }
+
+    public Long getId() {
         return id;
     }
 
@@ -55,13 +89,13 @@ public class RefundRequest {
         return decidedAt;
     }
 
-    void approve(Instant now) {
+    public void approve(Instant now) {
         requirePending();
         status = RefundStatus.APPROVED;
         decidedAt = now;
     }
 
-    void reject(Instant now) {
+    public void reject(Instant now) {
         requirePending();
         status = RefundStatus.REJECTED;
         decidedAt = now;
