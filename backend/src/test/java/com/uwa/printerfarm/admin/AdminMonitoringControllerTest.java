@@ -2,6 +2,8 @@ package com.uwa.printerfarm.admin;
 
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobStatus;
+import com.uwa.printerfarm.security.JwtUtil;
+import com.uwa.printerfarm.service.CustomUserDetailsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -27,6 +29,12 @@ class AdminMonitoringControllerTest {
 
     @MockBean
     private AdminMonitoringService monitoringService;
+
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private CustomUserDetailsService userDetailsService;
 
     @Test
     void jobsEndpointReturnsAllJobsWhenNoStatusGiven() throws Exception {
