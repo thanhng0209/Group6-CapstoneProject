@@ -43,3 +43,44 @@ CREATE INDEX idx_jobs_owner_uni_id ON jobs (owner_uni_id);
 CREATE INDEX idx_jobs_printer_id ON jobs (printer_id);
 CREATE INDEX idx_jobs_status ON jobs (status);
 CREATE INDEX idx_jobs_queued_at ON jobs (queued_at);
+
+-- ============================================================================
+-- 3. TRANSACTIONS TABLE
+-- Permanent, immutable ledger tracking all debits, refunds, and balance adjustments.
+-- ============================================================================
+CREATE TABLE transactions (
+    id                  BIGSERIAL       PRIMARY KEY,
+    owner_uni_id        VARCHAR(20)     NOT NULL,
+    job_id              BIGINT,
+    type                VARCHAR(20)     NOT NULL,                       -- 'DEBIT', 'REFUND', 'TOPUP'
+    amount              NUMERIC(10, 2)  NOT NULL,
+    balance_after       NUMERIC(10, 2)  NOT NULL,
+    occurred_at         TIMESTAMP       NOT NULL DEFAULT now(),
+    description         TEXT,
+    CONSTRAINT fk_transactions_owner_uni_id FOREIGN KEY (owner_uni_id) REFERENCES users (uni_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transactions_job_id FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_transactions_owner_uni_id ON transactions (owner_uni_id);
+CREATE INDEX idx_transactions_job_id ON transactions (job_id);
+CREATE INDEX idx_transactions_occurred_at ON transactions (occurred_at);
+
+-- ============================================================================
+-- 4. REFUND REQUESTS TABLE
+-- Secondary approval workflow for cancellations occurring outside the auto-refund window.
+-- ============================================================================
+CREATE TABLE refund_requests (
+    id                  BIGSERIAL       PRIMARY KEY,
+    job_id              BIGINT          NOT NULL,
+    owner_uni_id        VARCHAR(20)     NOT NULL,
+    amount              NUMERIC(10, 2)  NOT NULL,
+    status              VARCHAR(30)     NOT NULL DEFAULT 'PENDING_APPROVAL', -- 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'
+    requested_at        TIMESTAMP       NOT NULL DEFAULT now(),
+    decided_at          TIMESTAMP,
+    CONSTRAINT fk_refund_requests_job_id FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE,
+    CONSTRAINT fk_refund_requests_owner_uni_id FOREIGN KEY (owner_uni_id) REFERENCES users (uni_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_refund_requests_job_id ON refund_requests (job_id);
+CREATE INDEX idx_refund_requests_owner_uni_id ON refund_requests (owner_uni_id);
+CREATE INDEX idx_refund_requests_status ON refund_requests (status);
