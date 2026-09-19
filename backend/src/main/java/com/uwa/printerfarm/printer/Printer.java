@@ -114,6 +114,18 @@ public class Printer {
         this.currentColour = currentColour;
     }
 
+    public String getLoadedFilament() {
+        return currentMaterial;
+    }
+
+    public String getColor() {
+        return currentColour;
+    }
+
+    public String getColors() {
+        return currentColour;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
