@@ -168,4 +168,19 @@ class JobControllerTest {
 
         verify(jobLifecycleService, never()).cancel(any(), any());
     }
+
+    @Test
+    void cancelJobBelongingToAnotherStudentReturnsForbidden() throws Exception {
+        Job otherUserJob = new Job("99887766", "prusa-xl-1", "other.gcode", "PLA",
+                new BigDecimal("10.00"), new BigDecimal("20.00"));
+        otherUserJob.assignId(202L);
+
+        when(jobRepository.findById(202L)).thenReturn(Optional.of(otherUserJob));
+
+        mockMvc.perform(post("/api/jobs/202/cancel").with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        verify(jobLifecycleService, never()).cancel(any(), any());
+    }
 }
