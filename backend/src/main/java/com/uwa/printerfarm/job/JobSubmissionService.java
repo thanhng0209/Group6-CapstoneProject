@@ -5,6 +5,7 @@ import com.uwa.printerfarm.wallet.TransactionLedgerService;
 import com.uwa.printerfarm.wallet.TransactionType;
 import com.uwa.printerfarm.wallet.WalletService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -33,6 +34,7 @@ public class JobSubmissionService {
         this.jobRepository = jobRepository;
     }
 
+    @Transactional
     public Job submit(Job job) {
         BigDecimal cost = costCalculationService.calculate(
                 job.getMaterial(), job.getEstimatedGrams(), job.getEstimatedMinutes());
