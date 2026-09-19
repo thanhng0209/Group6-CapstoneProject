@@ -36,9 +36,17 @@ import java.util.Set;
 public class CompatibilityValidationService {
 
     private final PrinterProfileRegistry registry;
+    private final PrinterRepository printerRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CompatibilityValidationService(PrinterProfileRegistry registry,
+                                          PrinterRepository printerRepository) {
+        this.registry = registry;
+        this.printerRepository = printerRepository;
+    }
 
     public CompatibilityValidationService(PrinterProfileRegistry registry) {
-        this.registry = registry;
+        this(registry, null);
     }
 
     /**
@@ -47,11 +55,26 @@ public class CompatibilityValidationService {
      *
      * @param params            parameters extracted by the G-code parser
      * @param selectedPrinterId the printer the user has selected in the UI,
-     *                          e.g. "PRUSA_XL"
+     *                          e.g. "PRUSA_XL_1" (physical printer) or "PRUSA_XL" (model)
      * @return a {@link ValidationResult} – never {@code null}
      */
     public ValidationResult validate(GcodeParameters params, String selectedPrinterId) {
-        Optional<PrinterProfile> profileOpt = registry.findById(selectedPrinterId);
+        String profileId = selectedPrinterId;
+        if (printerRepository != null && selectedPrinterId != null) {
+            Optional<Printer> physicalOpt = printerRepository.findById(selectedPrinterId);
+            if (physicalOpt.isEmpty()) {
+                physicalOpt = printerRepository.findById(selectedPrinterId.toUpperCase());
+            }
+            if (physicalOpt.isPresent()) {
+                profileId = physicalOpt.get().getModel();
+            }
+        }
+
+        Optional<PrinterProfile> profileOpt = (profileId != null) ? registry.findById(profileId) : Optional.empty();
+        if (profileOpt.isEmpty() && profileId != null) {
+            profileOpt = registry.findById(profileId.toUpperCase());
+        }
+
         if (profileOpt.isEmpty()) {
             return ValidationResult.fail(List.of(
                     "Unknown printer: '" + selectedPrinterId + "'. "

@@ -6,8 +6,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link CompatibilityValidationService}.
@@ -19,10 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompatibilityValidationServiceTest {
 
     private CompatibilityValidationService service;
+    private PrinterRepository printerRepository;
 
     @BeforeEach
     void setUp() {
-        service = new CompatibilityValidationService(new PrinterProfileRegistry());
+        printerRepository = mock(PrinterRepository.class);
+        service = new CompatibilityValidationService(new PrinterProfileRegistry(), printerRepository);
     }
 
     // ── Happy paths ─────────────────────────────────────────────────────────
@@ -55,6 +60,38 @@ class CompatibilityValidationServiceTest {
         ValidationResult result = service.validate(params, "PRUSA_CORE_ONE");
 
         assertThat(result.valid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Physical printer ID PRUSA_XL_1 resolves to model PRUSA_XL and PASSES validation")
+    void physicalPrinterId_resolvesToModelAndPasses() {
+        when(printerRepository.findById("PRUSA_XL_1")).thenReturn(Optional.of(
+                new Printer("PRUSA_XL_1", "Prusa XL #1", "PRUSA_XL", "IDLE", "PLA", "Orange")
+        ));
+
+        GcodeParameters params = xlParams(
+                new BigDecimal("125.3"), new BigDecimal("98.5"), new BigDecimal("42.0"));
+
+        ValidationResult result = service.validate(params, "PRUSA_XL_1");
+
+        assertThat(result.valid()).isTrue();
+        assertThat(result.errors()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Physical printer ID PRUSA_CORE_ONE_1 resolves to model PRUSA_CORE_ONE and REJECTS XL G-code")
+    void physicalPrinterId_resolvesToModelAndRejectsMismatch() {
+        when(printerRepository.findById("PRUSA_CORE_ONE_1")).thenReturn(Optional.of(
+                new Printer("PRUSA_CORE_ONE_1", "Prusa Core One #1", "PRUSA_CORE_ONE", "IDLE", "PLA", "White")
+        ));
+
+        GcodeParameters params = xlParams(
+                new BigDecimal("310.0"), new BigDecimal("280.0"), new BigDecimal("50.0"));
+
+        ValidationResult result = service.validate(params, "PRUSA_CORE_ONE_1");
+
+        assertThat(result.valid()).isFalse();
+        assertThat(result.errors()).anySatisfy(e -> assertThat(e).containsIgnoringCase("mismatch"));
     }
 
     // ── ACCEPTANCE CHECK: XL file → Core One → rejected ────────────────────
