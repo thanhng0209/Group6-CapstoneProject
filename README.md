@@ -50,6 +50,20 @@ npm start
 App will be live at `http://localhost:4200`, and will call the backend at
 `http://localhost:8080/api`.
 
+## API Endpoints
+
+### Printer Management
+- `GET /api/printers` — Retrieve inventory of physical 3D printers with their status (`IDLE`, `PRINTING`, etc.), loaded material/filament, and colors.
+
+### Admin Monitoring & Refund Decisions
+- `GET /api/admin/jobs` — View jobs by status.
+- `GET /api/admin/printers` — View printer activity summary.
+- `GET /api/admin/costs` — View financial breakdown (total charged, refunded, net revenue).
+- `GET /api/admin/filament-usage` — View total filament consumption by material.
+- `GET /api/admin/refunds/pending` — List pending refund requests.
+- `POST /api/admin/refunds/{id}/approve` — Approve pending refund, credit student wallet, and record ledger transaction.
+- `POST /api/admin/refunds/{id}/reject` — Reject pending refund request without crediting.
+
 ## How the pieces connect
 
 ```
