@@ -62,7 +62,7 @@ public class WalletController {
             @RequestParam(value = "amount", required = false) BigDecimal paramAmount,
             @RequestBody(required = false) WalletOperationRequest request,
             Authentication authentication) {
-        if (!isAdmin(authentication)) {
+        if (!isAdmin(authentication) && !uniId.equals(authentication.getName())) {
             return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
         }
 
