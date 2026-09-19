@@ -14,12 +14,14 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -193,5 +195,25 @@ class JobControllerTest {
         mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+    }
+
+    @Test
+    void getMyJobsReturnsUserJobsOrdered() throws Exception {
+        Job secondJob = new Job("22345678", "prusa-core-one", "vase.gcode", "PETG",
+                new BigDecimal("30.00"), new BigDecimal("80.00"));
+        secondJob.assignId(102L);
+
+        when(jobRepository.findByOwnerUniIdOrderByQueuedAtDesc("22345678"))
+                .thenReturn(List.of(secondJob, sampleJob));
+
+        mockMvc.perform(get("/api/jobs/my"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(102L))
+                .andExpect(jsonPath("$[0].fileName").value("vase.gcode"))
+                .andExpect(jsonPath("$[1].id").value(101L))
+                .andExpect(jsonPath("$[1].fileName").value("cube.gcode"));
+
+        verify(jobRepository).findByOwnerUniIdOrderByQueuedAtDesc("22345678");
     }
 }
