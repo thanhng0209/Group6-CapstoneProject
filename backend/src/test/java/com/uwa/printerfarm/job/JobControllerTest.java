@@ -14,11 +14,11 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -118,5 +118,24 @@ class JobControllerTest {
                 .andExpect(jsonPath("$.code").value("MISSING_PRINTER_ID"));
 
         verify(jobSubmissionService, never()).submit(any());
+    }
+
+    @Test
+    void cancelJobWithinWindowAutoRefunds() throws Exception {
+        when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+        when(jobLifecycleService.cancel(eq(sampleJob), any())).thenAnswer(invocation -> {
+            sampleJob.setStatus(JobStatus.CANCELLED);
+            return RefundDecision.AUTO_REFUNDED;
+        });
+        when(jobRepository.save(sampleJob)).thenReturn(sampleJob);
+
+        mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobId").value(101L))
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.refundDecision").value("AUTO_REFUNDED"));
+
+        verify(jobLifecycleService).cancel(eq(sampleJob), any());
+        verify(jobRepository).save(sampleJob);
     }
 }
