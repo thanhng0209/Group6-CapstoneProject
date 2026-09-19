@@ -3,24 +3,34 @@ package com.uwa.printerfarm.admin;
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobStatus;
 import com.uwa.printerfarm.job.RefundRequest;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import com.uwa.printerfarm.job.RefundRequestNotFoundException;
+import com.uwa.printerfarm.job.RefundService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Read-only endpoints backing the farm manager's admin monitoring view.
+ * Endpoints backing the farm manager's admin monitoring and refund approval views.
  */
 @RestController
 public class AdminMonitoringController {
 
     private final AdminMonitoringService monitoringService;
+    private final RefundService refundService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AdminMonitoringController(AdminMonitoringService monitoringService, RefundService refundService) {
+        this.monitoringService = monitoringService;
+        this.refundService = refundService;
+    }
 
     public AdminMonitoringController(AdminMonitoringService monitoringService) {
-        this.monitoringService = monitoringService;
+        this(monitoringService, null);
     }
 
     @GetMapping("/api/admin/jobs")
@@ -46,5 +56,41 @@ public class AdminMonitoringController {
     @GetMapping("/api/admin/refunds/pending")
     public List<RefundRequest> pendingRefunds() {
         return monitoringService.pendingRefundRequests();
+    }
+
+    @PostMapping("/api/admin/refunds/{id}/approve")
+    public ResponseEntity<?> approveRefund(@PathVariable Long id) {
+        if (refundService == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "errors", List.of("Refund service is not configured"),
+                    "code", "SERVICE_UNAVAILABLE"));
+        }
+        RefundRequest approved = refundService.approve(id, Instant.now());
+        return ResponseEntity.ok(approved);
+    }
+
+    @PostMapping("/api/admin/refunds/{id}/reject")
+    public ResponseEntity<?> rejectRefund(@PathVariable Long id) {
+        if (refundService == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "errors", List.of("Refund service is not configured"),
+                    "code", "SERVICE_UNAVAILABLE"));
+        }
+        RefundRequest rejected = refundService.reject(id, Instant.now());
+        return ResponseEntity.ok(rejected);
+    }
+
+    @ExceptionHandler(RefundRequestNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRefundRequestNotFound(RefundRequestNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "errors", List.of(ex.getMessage()),
+                "code", "REFUND_REQUEST_NOT_FOUND"));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "errors", List.of(ex.getMessage()),
+                "code", "INVALID_REFUND_STATE"));
     }
 }
