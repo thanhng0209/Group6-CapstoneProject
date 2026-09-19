@@ -1,5 +1,6 @@
 package com.uwa.printerfarm.job;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
  */
 @RestController
 @RequestMapping("/api/jobs")
+@Tag(name = "Jobs", description = "Endpoints for submitting, cancelling, and viewing 3D print jobs")
 public class JobController {
 
     private final JobSubmissionService jobSubmissionService;
