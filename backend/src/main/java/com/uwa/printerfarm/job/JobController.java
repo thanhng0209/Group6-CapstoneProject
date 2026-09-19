@@ -108,6 +108,12 @@ public class JobController {
      * in JobLifecycleService.
      */
     @Operation(summary = "Cancel a print job", description = "Cancels a student's print job and evaluates refund decision.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Print job successfully cancelled and refund processed"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status transition for cancellation"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden: user does not own this job"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Job not found")
+    })
     @PostMapping("/{id}/cancel")
     public ResponseEntity<?> cancel(
             @PathVariable Long id,
@@ -154,6 +160,10 @@ public class JobController {
      * Returns a list of all jobs belonging to the currently authenticated user.
      */
     @Operation(summary = "Get current user's jobs", description = "Returns all jobs belonging to the authenticated student.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "List of user print jobs retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "User authentication required")
+    })
     @GetMapping("/my")
     public ResponseEntity<?> getMyJobs(
             @AuthenticationPrincipal UserPrincipal principal,
