@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST controller exposing endpoints for student 3D print job submissions,
@@ -31,20 +32,23 @@ public class JobController {
 
     private final JobSubmissionService jobSubmissionService;
     private final JobLifecycleService jobLifecycleService;
+    private final RefundService refundService;
     private final JobRepository jobRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
+            RefundService refundService,
             JobRepository jobRepository) {
         this.jobSubmissionService = jobSubmissionService;
         this.jobLifecycleService = jobLifecycleService;
+        this.refundService = refundService;
         this.jobRepository = jobRepository;
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService) {
-        this(jobSubmissionService, jobLifecycleService, null);
+        this(jobSubmissionService, jobLifecycleService, null, null);
     }
 
     /**
@@ -144,8 +148,9 @@ public class JobController {
             }
         }
 
-        RefundDecision decision = jobLifecycleService.cancel(job, Instant.now());
+        Optional<RefundRequest> refundRequest = refundService.cancelAndRefund(job, Instant.now());
         jobRepository.save(job);
+        RefundDecision decision = refundRequest.isPresent() ? RefundDecision.REQUIRES_APPROVAL : RefundDecision.AUTO_REFUNDED;
 
         return ResponseEntity.ok(Map.of(
                 "jobId", job.getId(),
