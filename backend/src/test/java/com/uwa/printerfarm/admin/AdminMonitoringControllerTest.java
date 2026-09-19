@@ -2,6 +2,11 @@ package com.uwa.printerfarm.admin;
 
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobStatus;
+import com.uwa.printerfarm.job.RefundDecision;
+import com.uwa.printerfarm.job.RefundRequest;
+import com.uwa.printerfarm.job.RefundRequestNotFoundException;
+import com.uwa.printerfarm.job.RefundService;
+import com.uwa.printerfarm.job.RefundStatus;
 import com.uwa.printerfarm.security.JwtUtil;
 import com.uwa.printerfarm.service.CustomUserDetailsService;
 import org.junit.jupiter.api.Test;
@@ -12,12 +17,17 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,6 +41,9 @@ class AdminMonitoringControllerTest {
 
     @MockBean
     private AdminMonitoringService monitoringService;
+
+    @MockBean
+    private RefundService refundService;
 
     @MockBean
     private JwtUtil jwtUtil;
@@ -96,5 +109,55 @@ class AdminMonitoringControllerTest {
         mockMvc.perform(get("/api/admin/refunds/pending"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
+    }
+
+    @Test
+    void approveRefundReturnsApprovedRequest() throws Exception {
+        RefundRequest request = new RefundRequest(1L, 10L, "22345678", new BigDecimal("6.20"), Instant.now());
+        request.approve(Instant.now());
+        when(refundService.approve(eq(1L), any(Instant.class))).thenReturn(request);
+
+        mockMvc.perform(post("/api/admin/refunds/1/approve").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.amount").value(6.20));
+
+        verify(refundService).approve(eq(1L), any(Instant.class));
+    }
+
+    @Test
+    void approveRefundReturnsNotFoundWhenRequestDoesNotExist() throws Exception {
+        when(refundService.approve(eq(999L), any(Instant.class)))
+                .thenThrow(new RefundRequestNotFoundException(999L));
+
+        mockMvc.perform(post("/api/admin/refunds/999/approve").with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("REFUND_REQUEST_NOT_FOUND"));
+    }
+
+    @Test
+    void rejectRefundReturnsRejectedRequest() throws Exception {
+        RefundRequest request = new RefundRequest(2L, 11L, "22345678", new BigDecimal("4.50"), Instant.now());
+        request.reject(Instant.now());
+        when(refundService.reject(eq(2L), any(Instant.class))).thenReturn(request);
+
+        mockMvc.perform(post("/api/admin/refunds/2/reject").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.amount").value(4.50));
+
+        verify(refundService).reject(eq(2L), any(Instant.class));
+    }
+
+    @Test
+    void rejectRefundReturnsBadRequestWhenAlreadyDecided() throws Exception {
+        when(refundService.reject(eq(1L), any(Instant.class)))
+                .thenThrow(new IllegalStateException("Refund request 1 has already been decided: APPROVED"));
+
+        mockMvc.perform(post("/api/admin/refunds/1/reject").with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REFUND_STATE"));
     }
 }
