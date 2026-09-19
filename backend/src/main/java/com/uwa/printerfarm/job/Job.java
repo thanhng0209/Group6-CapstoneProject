@@ -82,6 +82,10 @@ public class Job {
         return printerId;
     }
 
+    public void setPrinterId(String printerId) {
+        this.printerId = printerId;
+    }
+
     public String getFileName() {
         return fileName;
     }
@@ -130,7 +134,7 @@ public class Job {
         this.completedAt = completedAt;
     }
 
-    void assignId(long id) {
+    public void assignId(long id) {
         this.id = id;
     }
 }

@@ -2,6 +2,9 @@ package com.uwa.printerfarm.notification;
 
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobStatus;
+import com.uwa.printerfarm.model.User;
+import com.uwa.printerfarm.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
@@ -19,17 +22,27 @@ import org.springframework.stereotype.Service;
 public class JobNotificationService {
 
     private final MailSender mailSender;
+    private final UserRepository userRepository;
     private final String fromAddress;
     private final String emailDomain;
 
+    @Autowired
     public JobNotificationService(MailSender mailSender,
+                                   UserRepository userRepository,
                                    @Value("${printerfarm.notification.from-address:printerfarm-noreply@uwa.edu.au}")
                                    String fromAddress,
                                    @Value("${printerfarm.notification.email-domain:@student.uwa.edu.au}")
                                    String emailDomain) {
         this.mailSender = mailSender;
+        this.userRepository = userRepository;
         this.fromAddress = fromAddress;
         this.emailDomain = emailDomain;
+    }
+
+    public JobNotificationService(MailSender mailSender,
+                                   String fromAddress,
+                                   String emailDomain) {
+        this(mailSender, null, fromAddress, emailDomain);
     }
 
     /**
@@ -58,10 +71,16 @@ public class JobNotificationService {
     }
 
     /**
-     * Placeholder UNI-ID-to-email mapping until the auth/user module exposes
-     * each student's actual registered UWA email address.
+     * Resolves the user's actual registered email address from the database,
+     * falling back to the student email domain convention if not found.
      */
     String resolveEmail(String ownerUniId) {
+        if (userRepository != null && ownerUniId != null) {
+            return userRepository.findByUniId(ownerUniId)
+                    .map(User::getEmail)
+                    .filter(email -> email != null && !email.isBlank())
+                    .orElseGet(() -> ownerUniId + emailDomain);
+        }
         return ownerUniId + emailDomain;
     }
 

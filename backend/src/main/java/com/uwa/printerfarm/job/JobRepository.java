@@ -13,6 +13,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     List<Job> findByStatus(JobStatus status);
 
+    List<Job> findByStatusOrderByQueuedAtAsc(JobStatus status);
+
     List<Job> findByOwnerUniIdOrderByQueuedAtDesc(String ownerUniId);
 
     List<Job> findByPrinterId(String printerId);
