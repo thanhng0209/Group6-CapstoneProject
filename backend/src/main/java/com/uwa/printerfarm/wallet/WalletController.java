@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -22,7 +23,11 @@ public class WalletController {
 
     @Operation(summary = "Get user wallet balance", description = "Returns the balance in dollars for the specified uniId")
     @GetMapping("/{uniId}/balance")
-    public ResponseEntity<Map<String, Object>> getBalance(@PathVariable String uniId) {
+    public ResponseEntity<Map<String, Object>> getBalance(@PathVariable String uniId, Authentication authentication) {
+        if (!isAdmin(authentication) && !uniId.equals(authentication.getName())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+        }
+
         BigDecimal balance = walletService.getBalance(uniId);
         return ResponseEntity.ok(Map.of(
                 "uniId", uniId,
@@ -35,7 +40,12 @@ public class WalletController {
     public ResponseEntity<Map<String, Object>> debit(
             @PathVariable String uniId,
             @RequestParam(value = "amount", required = false) BigDecimal paramAmount,
-            @RequestBody(required = false) WalletOperationRequest request) {
+            @RequestBody(required = false) WalletOperationRequest request,
+            Authentication authentication) {
+        if (!isAdmin(authentication)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+        }
+
         BigDecimal amount = paramAmount != null ? paramAmount : (request != null ? request.getAmount() : BigDecimal.ZERO);
         BigDecimal balanceAfter = walletService.debit(uniId, amount);
         return ResponseEntity.ok(Map.of(
@@ -50,7 +60,12 @@ public class WalletController {
     public ResponseEntity<Map<String, Object>> credit(
             @PathVariable String uniId,
             @RequestParam(value = "amount", required = false) BigDecimal paramAmount,
-            @RequestBody(required = false) WalletOperationRequest request) {
+            @RequestBody(required = false) WalletOperationRequest request,
+            Authentication authentication) {
+        if (!isAdmin(authentication)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+        }
+
         BigDecimal amount = paramAmount != null ? paramAmount : (request != null ? request.getAmount() : BigDecimal.ZERO);
         BigDecimal balanceAfter = walletService.credit(uniId, amount);
         return ResponseEntity.ok(Map.of(
@@ -65,5 +80,11 @@ public class WalletController {
     @AllArgsConstructor
     public static class WalletOperationRequest {
         private BigDecimal amount;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
     }
 }
