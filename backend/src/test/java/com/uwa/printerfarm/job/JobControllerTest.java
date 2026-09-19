@@ -3,6 +3,7 @@ package com.uwa.printerfarm.job;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uwa.printerfarm.security.JwtUtil;
 import com.uwa.printerfarm.service.CustomUserDetailsService;
+import com.uwa.printerfarm.wallet.InsufficientBalanceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,5 +82,23 @@ class JobControllerTest {
                 .andExpect(jsonPath("$.cost").value(5.00));
 
         verify(jobSubmissionService).submit(any(Job.class));
+    }
+
+    @Test
+    void submitJobWithInsufficientBalanceReturnsBadRequest() throws Exception {
+        when(jobSubmissionService.submit(any(Job.class)))
+                .thenThrow(new InsufficientBalanceException("22345678", new BigDecimal("2.00"), new BigDecimal("15.00")));
+
+        JobController.JobSubmitRequest request = new JobController.JobSubmitRequest(
+                "prusa-xl-1", null, "cube.gcode", "PLA",
+                new BigDecimal("200.00"), new BigDecimal("300.00"), null
+        );
+
+        mockMvc.perform(post("/api/jobs/submit")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
     }
 }
