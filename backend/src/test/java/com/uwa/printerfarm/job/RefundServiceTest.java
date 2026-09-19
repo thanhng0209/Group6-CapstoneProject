@@ -82,7 +82,7 @@ class RefundServiceTest {
     void approvingAPendingRequestRefundsAndRecordsTransaction() {
         Job job = newQueuedJobWithCost(new BigDecimal("6.20"));
         RefundRequest request = new RefundRequest(1L, job.getId(), job.getOwnerUniId(), job.getCost(), Instant.now());
-        when(refundRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+        when(refundRequestRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(request));
 
         RefundRequest approved = refundService.approve(1L, Instant.now());
 
@@ -97,7 +97,7 @@ class RefundServiceTest {
     void rejectingAPendingRequestDoesNotRefund() {
         Job job = newQueuedJobWithCost(new BigDecimal("6.20"));
         RefundRequest request = new RefundRequest(1L, job.getId(), job.getOwnerUniId(), job.getCost(), Instant.now());
-        when(refundRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+        when(refundRequestRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(request));
 
         RefundRequest rejected = refundService.reject(1L, Instant.now());
 
@@ -111,7 +111,7 @@ class RefundServiceTest {
         Job job = newQueuedJobWithCost(new BigDecimal("6.20"));
         RefundRequest request = new RefundRequest(1L, job.getId(), job.getOwnerUniId(), job.getCost(), Instant.now());
         request.approve(Instant.now());
-        when(refundRequestRepository.findById(1L)).thenReturn(Optional.of(request));
+        when(refundRequestRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(request));
 
         assertThatThrownBy(() -> refundService.reject(1L, Instant.now()))
                 .isInstanceOf(IllegalStateException.class);
@@ -119,7 +119,7 @@ class RefundServiceTest {
 
     @Test
     void decidingUnknownRequestThrows() {
-        when(refundRequestRepository.findById(999L)).thenReturn(Optional.empty());
+        when(refundRequestRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> refundService.approve(999L, Instant.now()))
                 .isInstanceOf(RefundRequestNotFoundException.class);
