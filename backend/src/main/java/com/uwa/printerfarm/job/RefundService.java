@@ -50,7 +50,7 @@ public class RefundService {
 
     @Transactional
     public RefundRequest approve(long requestId, Instant now) {
-        RefundRequest request = requireRequest(requestId);
+        RefundRequest request = requireRequestForDecision(requestId);
         request.approve(now);
         refundRequestRepository.save(request);
         refund(request.getOwnerUniId(), request.getJobId(), request.getAmount());
@@ -59,7 +59,7 @@ public class RefundService {
 
     @Transactional
     public RefundRequest reject(long requestId, Instant now) {
-        RefundRequest request = requireRequest(requestId);
+        RefundRequest request = requireRequestForDecision(requestId);
         request.reject(now);
         return refundRequestRepository.save(request);
     }
@@ -76,6 +76,11 @@ public class RefundService {
 
     private RefundRequest requireRequest(long requestId) {
         return refundRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RefundRequestNotFoundException(requestId));
+    }
+
+    private RefundRequest requireRequestForDecision(long requestId) {
+        return refundRequestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new RefundRequestNotFoundException(requestId));
     }
 }
