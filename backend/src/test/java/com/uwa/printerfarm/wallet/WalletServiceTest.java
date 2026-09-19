@@ -16,6 +16,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,12 +27,15 @@ class WalletServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TransactionLedgerService ledgerService;
+
     private WalletService walletService;
     private User testUser;
 
     @BeforeEach
     void setUp() {
-        walletService = new WalletService(userRepository, new BigDecimal("50.00"));
+        walletService = new WalletService(userRepository, ledgerService, new BigDecimal("50.00"));
         testUser = User.builder()
                 .uniId("22345678")
                 .balanceCents(5000L) // $50.00
@@ -80,6 +85,8 @@ class WalletServiceTest {
         assertThat(balanceAfter).isEqualByComparingTo("60.00");
         assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
         verify(userRepository).save(testUser);
+        verify(ledgerService).record(eq("22345678"), isNull(), eq(TransactionType.TOPUP),
+                eq(new BigDecimal("10.00")), eq(new BigDecimal("60.00")), eq("Wallet balance top-up"));
     }
 
     @Test

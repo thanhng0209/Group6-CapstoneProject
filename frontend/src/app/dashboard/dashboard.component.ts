@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UserService } from '../services/user.service';
 import { AuthService } from '../auth/auth.service';
@@ -10,7 +11,7 @@ import { Job } from '../models/job.model';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -23,6 +24,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
   feedbackMessage: { text: string; type: 'success' | 'error' } | null = null;
   lastUpdated: Date = new Date();
+
+  // Top-Up Modal state
+  showTopUpModal = false;
+  isToppingUp = false;
+  topUpAmount: number | null = 20;
+  topUpErrorMessage: string | null = null;
+  readonly presetAmounts = [10, 20, 50, 100];
 
   private pollTimer: any = null;
 
@@ -181,5 +189,90 @@ export class DashboardComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  openTopUpModal(): void {
+    this.topUpAmount = 20;
+    this.topUpErrorMessage = null;
+    this.showTopUpModal = true;
+  }
+
+  closeTopUpModal(): void {
+    if (this.isToppingUp) return;
+    this.showTopUpModal = false;
+    this.topUpErrorMessage = null;
+  }
+
+  selectPresetAmount(amt: number): void {
+    this.topUpAmount = amt;
+    this.topUpErrorMessage = null;
+  }
+
+  onCustomAmountChange(): void {
+    this.topUpErrorMessage = null;
+  }
+
+  isValidTopUpAmount(): boolean {
+    return (
+      this.topUpAmount !== null &&
+      !isNaN(this.topUpAmount) &&
+      this.topUpAmount > 0
+    );
+  }
+
+  getProjectedBalance(): number {
+    const current = this.dashboard?.balance ?? 0;
+    const add = this.isValidTopUpAmount() ? Number(this.topUpAmount) : 0;
+    return Math.round((current + add) * 100) / 100;
+  }
+
+  confirmTopUp(): void {
+    if (!this.isValidTopUpAmount() || !this.dashboard) {
+      this.topUpErrorMessage =
+        'Please select or enter a valid dollar amount greater than 0.';
+      return;
+    }
+
+    const amount = Number(this.topUpAmount);
+    this.isToppingUp = true;
+    this.topUpErrorMessage = null;
+
+    this.userService.topUpBalance(this.dashboard.uniId, amount).subscribe({
+      next: (res) => {
+        this.isToppingUp = false;
+        const newBalance =
+          res?.balanceAfter !== undefined
+            ? Number(res.balanceAfter)
+            : this.dashboard!.balance + amount;
+        this.dashboard!.balance = newBalance;
+        this.closeTopUpModal();
+
+        this.feedbackMessage = {
+          text: `Successfully topped up $${amount.toFixed(2)}! Available balance is now $${newBalance.toFixed(2)}.`,
+          type: 'success',
+        };
+
+        // Reload user dashboard data to stay in sync
+        this.userService.getDashboard().subscribe({
+          next: (userData) => {
+            this.dashboard = userData;
+          },
+        });
+
+        setTimeout(() => {
+          if (this.feedbackMessage?.type === 'success') {
+            this.feedbackMessage = null;
+          }
+        }, 6000);
+      },
+      error: (err) => {
+        this.isToppingUp = false;
+        const msg =
+          err.error?.error ||
+          err.error?.errors?.[0] ||
+          'Top-up failed. Please verify your connection and try again.';
+        this.topUpErrorMessage = msg;
+      },
+    });
   }
 }

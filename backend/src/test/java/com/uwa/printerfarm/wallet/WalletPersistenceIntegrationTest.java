@@ -15,11 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import(WalletService.class)
+@Import({WalletService.class, TransactionLedgerService.class})
 class WalletPersistenceIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
 
     @Autowired
     private WalletService walletService;
@@ -79,5 +82,10 @@ class WalletPersistenceIntegrationTest {
 
         User dbUser = userRepository.findByUniId(TEST_UNI_ID).orElseThrow();
         assertThat(dbUser.getBalanceCents()).isEqualTo(7500L);
+
+        var txs = transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(TEST_UNI_ID);
+        assertThat(txs).hasSize(1);
+        assertThat(txs.get(0).getType()).isEqualTo(TransactionType.TOPUP);
+        assertThat(txs.get(0).getAmount()).isEqualByComparingTo("25.00");
     }
 }

@@ -12,9 +12,9 @@ import {
 const API_BASE = 'http://localhost:8080/api';
 
 const DEFAULT_PRINTERS: PrinterOption[] = [
-  { id: 'PRUSA_XL', displayName: 'Prusa XL' },
-  { id: 'PRUSA_CORE_ONE', displayName: 'Prusa Core One' },
-  { id: 'PRUSA_MK4S', displayName: 'Prusa MK4S' },
+  { id: 'PRUSA_XL_1', name: 'Prusa XL (Dual Tool)', displayName: 'Prusa XL (Dual Tool)', model: 'PRUSA_XL', status: 'IDLE', currentMaterial: 'PLA', currentColour: 'Prusa Orange' },
+  { id: 'PRUSA_MK4S_1', name: 'Prusa MK4S #1', displayName: 'Prusa MK4S #1', model: 'PRUSA_MK4S', status: 'IDLE', currentMaterial: 'PETG', currentColour: 'Galaxy Black' },
+  { id: 'PRUSA_CORE_ONE_1', name: 'Prusa Core One #1', displayName: 'Prusa Core One #1', model: 'PRUSA_CORE_ONE', status: 'IDLE', currentMaterial: 'PLA', currentColour: 'White' },
 ];
 
 const MATERIAL_RATES: Record<string, number> = {
@@ -30,7 +30,7 @@ export class JobService {
   constructor(private http: HttpClient) {}
 
   getPrinters(): Observable<PrinterOption[]> {
-    return this.http.get<PrinterOption[]>(`${API_BASE}/gcode/printers`).pipe(
+    return this.http.get<PrinterOption[]>(`${API_BASE}/printers`).pipe(
       catchError(() => of(DEFAULT_PRINTERS))
     );
   }

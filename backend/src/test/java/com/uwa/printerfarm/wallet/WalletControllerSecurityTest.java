@@ -64,8 +64,20 @@ class WalletControllerSecurityTest {
 
     @Test
     @WithMockUser(username = "22345678", roles = "STUDENT")
-    void studentCannotCreditWallet() throws Exception {
+    void studentCanCreditOwnWallet() throws Exception {
+        when(walletService.credit("22345678", new BigDecimal("10.00")))
+                .thenReturn(new BigDecimal("60.00"));
+
         mockMvc.perform(post("/api/wallet/22345678/credit").param("amount", "10.00").with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(walletService).credit("22345678", new BigDecimal("10.00"));
+    }
+
+    @Test
+    @WithMockUser(username = "22345678", roles = "STUDENT")
+    void studentCannotCreditAnotherStudentWallet() throws Exception {
+        mockMvc.perform(post("/api/wallet/99887766/credit").param("amount", "10.00").with(csrf()))
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(walletService);

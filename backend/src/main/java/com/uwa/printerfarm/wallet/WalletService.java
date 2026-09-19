@@ -19,12 +19,20 @@ import java.math.RoundingMode;
 public class WalletService {
 
     private final UserRepository userRepository;
+    private final TransactionLedgerService transactionLedgerService;
     private final BigDecimal defaultStartingBalance;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public WalletService(UserRepository userRepository,
+                         TransactionLedgerService transactionLedgerService,
                          @Value("${printerfarm.wallet.default-starting-balance:50.00}") BigDecimal defaultStartingBalance) {
         this.userRepository = userRepository;
+        this.transactionLedgerService = transactionLedgerService;
         this.defaultStartingBalance = defaultStartingBalance;
+    }
+
+    public WalletService(UserRepository userRepository, BigDecimal defaultStartingBalance) {
+        this(userRepository, null, defaultStartingBalance);
     }
 
     @Transactional
@@ -62,7 +70,12 @@ public class WalletService {
         user.setBalanceCents(updatedCents);
         userRepository.save(user);
 
-        return toDollars(updatedCents);
+        BigDecimal balanceAfter = toDollars(updatedCents);
+        if (transactionLedgerService != null) {
+            transactionLedgerService.record(ownerUniId, null, TransactionType.TOPUP, amount, balanceAfter, "Wallet balance top-up");
+        }
+
+        return balanceAfter;
     }
 
     private User getOrCreateUser(String ownerUniId) {
