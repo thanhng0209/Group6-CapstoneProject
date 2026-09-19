@@ -1,62 +1,91 @@
 package com.uwa.printerfarm.wallet;
 
+import com.uwa.printerfarm.enums.Role;
+import com.uwa.printerfarm.model.User;
+import com.uwa.printerfarm.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
+import java.math.RoundingMode;
 
 /**
- * Tracks per-student balances in memory. Placeholder until the team wires up
- * real account persistence and a top-up mechanism (both still unconfirmed in
- * the client agreement); every unseen student starts with a configurable
- * placeholder balance so job submission can be exercised end-to-end.
+ * Manages student wallet balances backed by real database persistence on the User entity.
+ * Balance is stored on User.balanceCents in PostgreSQL as an integer (cents)
+ * to avoid floating-point rounding errors.
  */
 @Service
 public class WalletService {
 
-    private final ConcurrentHashMap<String, BigDecimal> balances = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+    private final UserRepository userRepository;
     private final BigDecimal defaultStartingBalance;
 
-    public WalletService(@Value("${printerfarm.wallet.default-starting-balance:50.00}") BigDecimal defaultStartingBalance) {
+    public WalletService(UserRepository userRepository,
+                         @Value("${printerfarm.wallet.default-starting-balance:50.00}") BigDecimal defaultStartingBalance) {
+        this.userRepository = userRepository;
         this.defaultStartingBalance = defaultStartingBalance;
     }
 
+    @Transactional
     public BigDecimal getBalance(String ownerUniId) {
-        return balances.computeIfAbsent(ownerUniId, id -> defaultStartingBalance);
+        User user = getOrCreateUser(ownerUniId);
+        long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
+        return toDollars(currentCents);
     }
 
+    @Transactional
     public BigDecimal debit(String ownerUniId, BigDecimal amount) {
-        ReentrantLock lock = lockFor(ownerUniId);
-        lock.lock();
-        try {
-            BigDecimal current = getBalance(ownerUniId);
-            if (current.compareTo(amount) < 0) {
-                throw new InsufficientBalanceException(ownerUniId, current, amount);
-            }
-            BigDecimal updated = current.subtract(amount);
-            balances.put(ownerUniId, updated);
-            return updated;
-        } finally {
-            lock.unlock();
+        User user = getOrCreateUser(ownerUniId);
+        long amountCents = toCents(amount);
+        long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
+        BigDecimal currentDollars = toDollars(currentCents);
+
+        if (currentCents < amountCents) {
+            throw new InsufficientBalanceException(ownerUniId, currentDollars, amount);
         }
+
+        long updatedCents = currentCents - amountCents;
+        user.setBalanceCents(updatedCents);
+        userRepository.save(user);
+
+        return toDollars(updatedCents);
     }
 
+    @Transactional
     public BigDecimal credit(String ownerUniId, BigDecimal amount) {
-        ReentrantLock lock = lockFor(ownerUniId);
-        lock.lock();
-        try {
-            BigDecimal updated = getBalance(ownerUniId).add(amount);
-            balances.put(ownerUniId, updated);
-            return updated;
-        } finally {
-            lock.unlock();
-        }
+        User user = getOrCreateUser(ownerUniId);
+        long amountCents = toCents(amount);
+        long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
+
+        long updatedCents = currentCents + amountCents;
+        user.setBalanceCents(updatedCents);
+        userRepository.save(user);
+
+        return toDollars(updatedCents);
     }
 
-    private ReentrantLock lockFor(String ownerUniId) {
-        return locks.computeIfAbsent(ownerUniId, id -> new ReentrantLock());
+    private User getOrCreateUser(String ownerUniId) {
+        return userRepository.findByUniId(ownerUniId)
+                .orElseGet(() -> {
+                    long defaultCents = toCents(defaultStartingBalance);
+                    User newUser = User.builder()
+                            .uniId(ownerUniId)
+                            .email(ownerUniId + "@student.uwa.edu.au")
+                            .fullName("Student " + ownerUniId)
+                            .passwordHash("$2a$10$placeholderForUnseenStudentUserOnly")
+                            .role(Role.STUDENT)
+                            .balanceCents(defaultCents)
+                            .build();
+                    return userRepository.save(newUser);
+                });
+    }
+
+    private long toCents(BigDecimal amount) {
+        return amount.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
+    }
+
+    private BigDecimal toDollars(long cents) {
+        return BigDecimal.valueOf(cents).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 }

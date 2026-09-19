@@ -1,38 +1,75 @@
 package com.uwa.printerfarm.wallet;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * A single, permanent ledger entry. There is no setter and no way to edit or
- * delete a transaction after it is recorded: the MVP acceptance criteria
- * require an immutable transaction history, so corrections must be made by
- * recording a new, offsetting transaction rather than changing this one.
+ * A single, permanent ledger entry.
+ * Mapped to the 'transactions' table in PostgreSQL.
+ * Immutable transaction history: corrections must be made by recording
+ * a new, offsetting transaction rather than mutating existing entries.
  */
-public final class Transaction {
+@Entity
+@Table(name = "transactions")
+public class Transaction {
 
-    private final long id;
-    private final String ownerUniId;
-    private final Long jobId;
-    private final TransactionType type;
-    private final BigDecimal amount;
-    private final BigDecimal balanceAfter;
-    private final Instant occurredAt;
-    private final String description;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    Transaction(long id, String ownerUniId, Long jobId, TransactionType type,
-                BigDecimal amount, BigDecimal balanceAfter, Instant occurredAt, String description) {
-        this.id = id;
+    @Column(name = "owner_uni_id", nullable = false, length = 20)
+    private String ownerUniId;
+
+    @Column(name = "job_id")
+    private Long jobId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TransactionType type;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;
+
+    @Column(name = "balance_after", nullable = false, precision = 10, scale = 2)
+    private BigDecimal balanceAfter;
+
+    @Column(name = "occurred_at", nullable = false)
+    private Instant occurredAt = Instant.now();
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    protected Transaction() {
+        // required by JPA
+    }
+
+    public Transaction(String ownerUniId, Long jobId, TransactionType type,
+                       BigDecimal amount, BigDecimal balanceAfter, Instant occurredAt, String description) {
         this.ownerUniId = ownerUniId;
         this.jobId = jobId;
         this.type = type;
         this.amount = amount;
         this.balanceAfter = balanceAfter;
-        this.occurredAt = occurredAt;
+        this.occurredAt = occurredAt != null ? occurredAt : Instant.now();
         this.description = description;
     }
 
-    public long getId() {
+    public Transaction(Long id, String ownerUniId, Long jobId, TransactionType type,
+                       BigDecimal amount, BigDecimal balanceAfter, Instant occurredAt, String description) {
+        this(ownerUniId, jobId, type, amount, balanceAfter, occurredAt, description);
+        this.id = id;
+    }
+
+    public Long getId() {
         return id;
     }
 
