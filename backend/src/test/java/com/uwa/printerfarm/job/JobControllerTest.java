@@ -138,4 +138,23 @@ class JobControllerTest {
         verify(jobLifecycleService).cancel(eq(sampleJob), any());
         verify(jobRepository).save(sampleJob);
     }
+
+    @Test
+    void cancelJobOutsideWindowRequiresApproval() throws Exception {
+        when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+        when(jobLifecycleService.cancel(eq(sampleJob), any())).thenAnswer(invocation -> {
+            sampleJob.setStatus(JobStatus.CANCELLED);
+            return RefundDecision.REQUIRES_APPROVAL;
+        });
+        when(jobRepository.save(sampleJob)).thenReturn(sampleJob);
+
+        mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobId").value(101L))
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.refundDecision").value("REQUIRES_APPROVAL"));
+
+        verify(jobLifecycleService).cancel(eq(sampleJob), any());
+        verify(jobRepository).save(sampleJob);
+    }
 }
