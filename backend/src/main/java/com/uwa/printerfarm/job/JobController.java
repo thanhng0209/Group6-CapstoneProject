@@ -86,7 +86,7 @@ public class JobController {
                     "code", "MISSING_PRINTER_ID"));
         }
 
-        String material = request.getMaterial() != null ? request.getMaterial() : "PLA";
+        String material = request.getMaterial() != null ? request.getMaterial().trim().toUpperCase() : "PLA";
         BigDecimal estimatedGrams = request.getEstimatedGrams() != null ? request.getEstimatedGrams() : BigDecimal.ZERO;
         BigDecimal estimatedMinutes = request.getEstimatedMinutes() != null ? request.getEstimatedMinutes()
                 : BigDecimal.ZERO;
