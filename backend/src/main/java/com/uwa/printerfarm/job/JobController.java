@@ -1,5 +1,6 @@
 package com.uwa.printerfarm.job;
 
+import com.uwa.printerfarm.printer.PrinterRepository;
 import com.uwa.printerfarm.security.UserPrincipal;
 import com.uwa.printerfarm.wallet.InsufficientBalanceException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,19 +33,28 @@ public class JobController {
     private final JobSubmissionService jobSubmissionService;
     private final JobLifecycleService jobLifecycleService;
     private final JobRepository jobRepository;
+    private final PrinterRepository printerRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
-            JobRepository jobRepository) {
+            JobRepository jobRepository,
+            PrinterRepository printerRepository) {
         this.jobSubmissionService = jobSubmissionService;
         this.jobLifecycleService = jobLifecycleService;
         this.jobRepository = jobRepository;
+        this.printerRepository = printerRepository;
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository) {
+        this(jobSubmissionService, jobLifecycleService, jobRepository, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService) {
-        this(jobSubmissionService, jobLifecycleService, null);
+        this(jobSubmissionService, jobLifecycleService, null, null);
     }
 
     /**
@@ -78,12 +88,14 @@ public class JobController {
 
         String printerId = request.getPrinterId();
         if (printerId == null || printerId.isBlank()) {
-            printerId = request.getPrinterProfileId();
-        }
-        if (printerId == null || printerId.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "errors", List.of("printerId is required"),
                     "code", "MISSING_PRINTER_ID"));
+        }
+        if (printerRepository != null && !printerRepository.existsById(printerId)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "errors", List.of("Unknown printerId: " + printerId),
+                    "code", "INVALID_PRINTER_ID"));
         }
 
         String material = request.getMaterial() != null ? request.getMaterial().trim().toUpperCase() : "PLA";

@@ -1,6 +1,7 @@
 package com.uwa.printerfarm.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uwa.printerfarm.printer.PrinterRepository;
 import com.uwa.printerfarm.security.JwtUtil;
 import com.uwa.printerfarm.service.CustomUserDetailsService;
 import com.uwa.printerfarm.wallet.InsufficientBalanceException;
@@ -46,6 +47,9 @@ class JobControllerTest {
     private JobRepository jobRepository;
 
     @MockBean
+    private PrinterRepository printerRepository;
+
+    @MockBean
     private JwtUtil jwtUtil;
 
     @MockBean
@@ -57,6 +61,7 @@ class JobControllerTest {
     void setUp() {
         sampleJob = new Job("22345678", "prusa-xl-1", "cube.gcode", "PLA", new BigDecimal("50.00"), new BigDecimal("120.00"));
         sampleJob.assignId(101L);
+        when(printerRepository.existsById(anyString())).thenReturn(true);
     }
 
     @Test
@@ -118,6 +123,42 @@ class JobControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MISSING_PRINTER_ID"));
+
+        verify(jobSubmissionService, never()).submit(any());
+    }
+
+    @Test
+    void submitJobWithOnlyPrinterProfileIdReturnsBadRequest() throws Exception {
+        JobController.JobSubmitRequest request = new JobController.JobSubmitRequest(
+                null, "PRUSA_XL", "cube.gcode", "PLA",
+                new BigDecimal("10.00"), new BigDecimal("20.00"), null
+        );
+
+        mockMvc.perform(post("/api/jobs/submit")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MISSING_PRINTER_ID"));
+
+        verify(jobSubmissionService, never()).submit(any());
+    }
+
+    @Test
+    void submitJobWithUnknownPrinterIdReturnsBadRequest() throws Exception {
+        when(printerRepository.existsById("unknown-printer")).thenReturn(false);
+
+        JobController.JobSubmitRequest request = new JobController.JobSubmitRequest(
+                "unknown-printer", null, "cube.gcode", "PLA",
+                new BigDecimal("10.00"), new BigDecimal("20.00"), null
+        );
+
+        mockMvc.perform(post("/api/jobs/submit")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PRINTER_ID"));
 
         verify(jobSubmissionService, never()).submit(any());
     }
