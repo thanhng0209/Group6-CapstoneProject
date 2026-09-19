@@ -52,6 +52,11 @@ public class JobController {
      * creates a Job entity with 'QUEUED' status, and saves to DB.
      */
     @Operation(summary = "Submit a print job", description = "Deducts funds, creates a Job with QUEUED status, and saves to database.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Print job successfully queued and cost deducted"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Insufficient funds or invalid input parameters"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "User authentication required")
+    })
     @PostMapping("/submit")
     public ResponseEntity<?> submit(
             @RequestBody JobSubmitRequest request,
