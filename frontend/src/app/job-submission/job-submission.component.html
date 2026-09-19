@@ -1,0 +1,356 @@
+<div class="submission-container">
+  <!-- Navigation bar -->
+  <nav class="submission-nav">
+    <a routerLink="/dashboard" class="back-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back to Dashboard
+    </a>
+    <div class="user-balance-badge" *ngIf="userBalance !== null">
+      Balance: <strong>${{ userBalance.toFixed(2) }}</strong>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <header class="submission-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+        <line x1="12" y1="22" x2="12" y2="15.5"/>
+        <polyline points="22 8.5 12 15.5 2 8.5"/>
+      </svg>
+      UWA 3D Print Farm
+    </div>
+    <h1>Submit <span>3D Print Job</span></h1>
+    <p class="subtitle">
+      Upload and validate your PrusaSlicer <code>.gcode</code> file to check printer compatibility and calculate job cost before submission.
+    </p>
+  </header>
+
+  <!-- Success Announcement Card -->
+  <div class="card success-card" *ngIf="submissionSuccessJob">
+    <div class="success-icon">🎉</div>
+    <h2>Print Job Successfully Queued!</h2>
+    <p class="success-desc">
+      Your print job <strong>#{{ submissionSuccessJob.id }}</strong> (<code>{{ submissionSuccessJob.fileName }}</code>)
+      has been scheduled on <strong>{{ submissionSuccessJob.printerId }}</strong>.
+    </p>
+    <div class="success-details">
+      <div class="success-pill">
+        <span>Charged:</span> <strong>${{ (submissionSuccessJob.cost || estimatedCost).toFixed(2) }}</strong>
+      </div>
+      <div class="success-pill">
+        <span>Status:</span> <strong>{{ submissionSuccessJob.status }}</strong>
+      </div>
+    </div>
+    <div class="success-actions">
+      <a routerLink="/dashboard" class="primary-btn">Go to Dashboard</a>
+      <button type="button" class="secondary-btn" (click)="startNewSubmission()">Submit Another Job</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!submissionSuccessJob">
+    <!-- Step 1: Printer Selection & Export Guide -->
+    <div class="card">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Step 1 — Select Target Printer
+      </div>
+
+      <div class="printer-row">
+        <label class="printer-label" for="printerSelect">Target printer:</label>
+        <select id="printerSelect" [(ngModel)]="selectedPrinterId" (change)="onPrinterChange()">
+          <option value="" disabled>— Choose a printer —</option>
+          <option *ngFor="let p of printers" [value]="p.id">{{ p.displayName }}</option>
+        </select>
+      </div>
+
+      <!-- PrusaSlicer export settings guide -->
+      <div class="guide-wrapper">
+        <button class="help-toggle" type="button" (click)="toggleGuide()" [attr.aria-expanded]="showGuide">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          PrusaSlicer export settings guide
+        </button>
+
+        <div class="help-panel" *ngIf="showGuide">
+          <h3>⚠ Required PrusaSlicer Export Settings</h3>
+          <p><strong>Binary G-code must be disabled</strong><span class="required-badge">Required</span></p>
+          <ol>
+            <li>Open PrusaSlicer and load your 3D model.</li>
+            <li>Navigate to <strong>Print Settings → Output options</strong>.</li>
+            <li>Locate <strong>"Binary G-code"</strong> and <strong>uncheck</strong> it.<br/>
+                <em>(PrusaSlicer 2.7+ enables this by default. ASCII G-code is required for farm validation.)</em></li>
+            <li>Export: <strong>File → Export → Export G-code</strong> (saving as <code>.gcode</code>).</li>
+          </ol>
+          <p class="guide-subtitle"><strong>Recommended settings for accurate estimation:</strong></p>
+          <ol>
+            <li><strong>Print Settings → Output options → "Add machine limits comments"</strong> → Enabled</li>
+            <li><strong>Print Settings → Output options → "Verbose G-code"</strong> → Enabled</li>
+            <li>Ensure the correct <strong>printer profile</strong> is selected in the PrusaSlicer presets to match your chosen target printer.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: File Upload Zone -->
+    <div class="card">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+        </svg>
+        Step 2 — Upload G-code File
+      </div>
+
+      <div
+        id="dropZone"
+        class="drop-zone"
+        [class.drag-over]="isDragOver"
+        [class.has-file]="!!selectedFile"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+        (click)="fileInput.click()"
+      >
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+
+        <p class="drop-title" *ngIf="!selectedFile">Drag &amp; drop your .gcode file here</p>
+        <p class="drop-subtitle" *ngIf="!selectedFile">or <span class="browse-link">browse to upload</span> &nbsp;·&nbsp; max 50 MB</p>
+        
+        <input #fileInput type="file" accept=".gcode" (change)="onFileInputChange($event)" style="display:none;" />
+
+        <!-- Selected File Info -->
+        <div class="file-info-pill" *ngIf="selectedFile" (click)="$event.stopPropagation()">
+          <span class="file-name">{{ selectedFile.name }}</span>
+          <span class="file-size">{{ fileSizeFormatted }}</span>
+          <button type="button" class="file-clear-btn" (click)="clearFile($event)" title="Remove file">✕</button>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <button
+        id="uploadBtn"
+        type="button"
+        class="primary-btn full-width"
+        [disabled]="!selectedFile || !selectedPrinterId || isValidating"
+        (click)="validateGcode()"
+      >
+        <span *ngIf="!isValidating">Validate G-code Compatibility</span>
+        <span *ngIf="isValidating">Validating File...</span>
+        <span class="spinner" *ngIf="isValidating"></span>
+      </button>
+    </div>
+
+    <!-- Error Alert Banner -->
+    <div class="card error-card" *ngIf="errorMessage">
+      <div class="result-status fail">
+        <span class="status-icon">❌</span>
+        <span>{{ errorMessage }}</span>
+      </div>
+      <ul class="error-list" *ngIf="errorDetails.length > 0">
+        <li *ngFor="let err of errorDetails">{{ err }}</li>
+      </ul>
+    </div>
+
+    <!-- Step 3: Validation Results & Submission -->
+    <div class="card result-card" *ngIf="validationResult">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        Step 3 — Validation Results &amp; Cost
+      </div>
+
+      <!-- Compatibility Status Banner -->
+      <div class="result-status" [class.pass]="validationResult.compatible" [class.fail]="!validationResult.compatible">
+        <span class="status-icon">{{ validationResult.compatible ? '✅' : '❌' }}</span>
+        <span>
+          {{ validationResult.compatible
+              ? 'Compatible — this file is ready for ' + getSelectedPrinterName() + '.'
+              : 'Incompatible — this file cannot be printed on ' + getSelectedPrinterName() + '.' }}
+        </span>
+      </div>
+
+      <!-- Compatibility Errors (if any) -->
+      <div class="errors-section" *ngIf="!validationResult.compatible && validationResult.compatibilityErrors?.length">
+        <div class="section-label error-label">Compatibility Issues</div>
+        <ul class="error-list">
+          <li *ngFor="let err of validationResult.compatibilityErrors">{{ err }}</li>
+        </ul>
+      </div>
+
+      <!-- Parameters Grid -->
+      <div class="section-label">Extracted G-code Parameters</div>
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="param-key">Target Printer</div>
+          <div class="param-val highlight">{{ getSelectedPrinterName() }}</div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Printer Profile (G-code)</div>
+          <div class="param-val" [class.missing]="!validationResult.printerProfileId">
+            {{ validationResult.printerProfileId || 'Not found in file' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Material</div>
+          <div class="param-val" [class.missing]="!validationResult.material">
+            {{ validationResult.material || 'Not specified' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Nozzle Diameter</div>
+          <div class="param-val" [class.missing]="validationResult.nozzleDiameter == null">
+            {{ validationResult.nozzleDiameter != null ? validationResult.nozzleDiameter + ' mm' : 'Not found' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Layer Height</div>
+          <div class="param-val" [class.missing]="validationResult.layerHeight == null">
+            {{ validationResult.layerHeight != null ? validationResult.layerHeight + ' mm' : 'Not found' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Print Volume (X × Y × Z)</div>
+          <div class="param-val" [class.missing]="validationResult.printVolumeX == null">
+            {{ validationResult.printVolumeX != null ? validationResult.printVolumeX + ' × ' + validationResult.printVolumeY + ' × ' + validationResult.printVolumeZ + ' mm' : 'Not found' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Nozzle / Bed Temp</div>
+          <div class="param-val">
+            {{ validationResult.nozzleTemp != null ? validationResult.nozzleTemp + '°C' : '-' }} /
+            {{ validationResult.bedTemp != null ? validationResult.bedTemp + '°C' : '-' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Estimated Weight</div>
+          <div class="param-val" [class.missing]="validationResult.estimatedGrams == null">
+            {{ validationResult.estimatedGrams != null ? validationResult.estimatedGrams + ' g' : 'Not found' }}
+          </div>
+        </div>
+
+        <div class="param-card">
+          <div class="param-key">Estimated Print Time</div>
+          <div class="param-val" [class.missing]="validationResult.estimatedMinutes == null">
+            {{ formatMinutes(validationResult.estimatedMinutes) }}
+          </div>
+        </div>
+
+        <div class="param-card cost-card">
+          <div class="param-key">Estimated Cost</div>
+          <div class="param-val cost-val">${{ estimatedCost.toFixed(2) }}</div>
+        </div>
+      </div>
+
+      <!-- Submit Section -->
+      <div class="submit-action-box" *ngIf="validationResult.compatible">
+        <div class="cost-summary-banner">
+          <div>
+            <div class="cost-title">Total Cost: <strong>${{ estimatedCost.toFixed(2) }}</strong></div>
+            <div class="cost-subtitle">Calculated based on material consumption and machine duration</div>
+          </div>
+          <button type="button" class="submit-job-btn" (click)="openConfirmationModal()">
+            Submit Print Job
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Confirmation & Balance Deduction Dialog Modal -->
+  <div class="modal-backdrop" *ngIf="showConfirmDialog" (click)="closeConfirmationModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">💳</span>
+          <h3>Confirm Job Submission</h3>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeConfirmationModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-intro">
+          Please review the print job details and cost before confirming submission.
+        </p>
+
+        <div class="job-summary-table">
+          <div class="summary-row">
+            <span class="label">File:</span>
+            <span class="val font-mono">{{ selectedFile?.name }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Printer:</span>
+            <span class="val">{{ getSelectedPrinterName() }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Material:</span>
+            <span class="val">{{ validationResult?.material || 'PLA' }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Est. Weight & Time:</span>
+            <span class="val">{{ validationResult?.estimatedGrams || 0 }}g &nbsp;·&nbsp; {{ formatMinutes(validationResult?.estimatedMinutes) }}</span>
+          </div>
+          <div class="summary-row highlight-cost">
+            <span class="label">Total Price:</span>
+            <span class="val">${{ estimatedCost.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row" *ngIf="userBalance !== null">
+            <span class="label">Current Balance:</span>
+            <span class="val" [class.balance-insufficient]="userBalance < estimatedCost">
+              ${{ userBalance.toFixed(2) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Balance Warning / Notice -->
+        <div class="insufficient-alert" *ngIf="userBalance !== null && userBalance < estimatedCost">
+          ⚠️ <strong>Insufficient Balance:</strong> You need ${{ (estimatedCost - userBalance).toFixed(2) }} more to submit this job. Please top up your wallet.
+        </div>
+
+        <div class="deduction-notice" *ngIf="userBalance === null || userBalance >= estimatedCost">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <span>
+            Confirming this submission will immediately deduct <strong>${{ estimatedCost.toFixed(2) }}</strong>
+            from your student account balance and place the job into the print queue.
+          </span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-btn" [disabled]="isSubmitting" (click)="closeConfirmationModal()">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="confirm-submit-btn"
+          [disabled]="isSubmitting || (userBalance !== null && userBalance < estimatedCost)"
+          (click)="confirmAndSubmit()"
+        >
+          <span *ngIf="!isSubmitting">Confirm &amp; Deduct Balance (${{ estimatedCost.toFixed(2) }})</span>
+          <span *ngIf="isSubmitting">Deducting &amp; Queuing...</span>
+          <span class="spinner" *ngIf="isSubmitting"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
