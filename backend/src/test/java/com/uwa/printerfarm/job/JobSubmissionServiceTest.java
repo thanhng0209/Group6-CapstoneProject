@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -82,5 +83,11 @@ class JobSubmissionServiceTest {
 
         verify(jobRepository, never()).save(any());
         verify(ledgerService, never()).record(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void submitMethodIsTransactional() throws NoSuchMethodException {
+        assertThat(JobSubmissionService.class.getMethod("submit", Job.class)
+                .isAnnotationPresent(Transactional.class)).isTrue();
     }
 }
