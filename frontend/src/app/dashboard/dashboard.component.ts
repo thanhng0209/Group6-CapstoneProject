@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { UserService } from '../services/user.service';
 import { AuthService } from '../auth/auth.service';
 import { JobService } from '../services/job.service';
@@ -11,7 +11,7 @@ import { Job } from '../models/job.model';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -39,7 +39,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private jobService: JobService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadInitialData();
@@ -185,6 +185,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return isoString;
     }
   }
+
+  get activeJobsCount(): number {
+    return this.jobs.filter(
+      job => job.status === 'QUEUED' || job.status === 'PRINTING'
+    ).length;
+  }
+
+  get estimatedFilamentGrams(): number {
+    return this.jobs.reduce(
+      (total, job) => total + (job.estimatedGrams || 0),
+      0
+    );
+  }
+
+
 
   logout(): void {
     this.authService.logout();
