@@ -157,4 +157,15 @@ class JobControllerTest {
         verify(jobLifecycleService).cancel(eq(sampleJob), any());
         verify(jobRepository).save(sampleJob);
     }
+
+    @Test
+    void cancelNonExistentJobReturnsNotFound() throws Exception {
+        when(jobRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/jobs/999/cancel").with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("JOB_NOT_FOUND"));
+
+        verify(jobLifecycleService, never()).cancel(any(), any());
+    }
 }
