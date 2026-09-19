@@ -1,47 +1,67 @@
-<div class="login-container">
-  <div class="login-card">
-    <h1>UWA Printer Farm</h1>
-    <p class="subtitle">Sign in with your UNI ID to continue</p>
+<main class="page">
+  <!-- Left: form -->
+  <section class="panel">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>UWA Printer Farm</div>
 
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div class="form-field">
-        <label for="uniId">UNI ID</label>
-        <input
-          id="uniId"
-          type="text"
-          formControlName="uniId"
-          placeholder="e.g. 24726476"
-          autocomplete="username"
-        />
-        <span
-          class="field-error"
-          *ngIf="loginForm.get('uniId')?.touched && loginForm.get('uniId')?.invalid"
-        >
-          UNI ID is required.
-        </span>
-      </div>
+    <div class="panel-body">
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in with your UWA email to start printing.</p>
 
-      <div class="form-field">
-        <label for="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          autocomplete="current-password"
-        />
-        <span
-          class="field-error"
-          *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
-        >
-          Password is required.
-        </span>
-      </div>
+      <form class="form" [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="field">
+          <label for="email">UWA email</label>
+          <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none"
+            spellcheck="false" placeholder="e.g. 24717854@student.uwa.edu.au" formControlName="email"
+            [class.invalid]="email?.invalid && email?.touched" />
+          <p class="field-error" *ngIf="email?.invalid && email?.touched">
+            {{ email?.errors?.['required'] ? 'Enter your UWA email.' : 'Use your UWA email, like
+            24717854@student.uwa.edu.au or name@uwa.edu.au.' }}
+          </p>
+        </div>
 
-      <div class="server-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="pw">
+            <input id="password" [type]="showPassword ? 'text' : 'password'" autocomplete="current-password"
+              formControlName="password" [class.invalid]="password?.invalid && password?.touched" />
+            <button type="button" class="toggle" (click)="showPassword = !showPassword"
+              [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          <p class="field-error" *ngIf="password?.invalid && password?.touched">Enter your password.</p>
+        </div>
 
-      <button type="submit" [disabled]="isSubmitting">
-        {{ isSubmitting ? 'Signing in...' : 'Sign In' }}
-      </button>
-    </form>
-  </div>
-</div>
+        <p class="form-error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+        <button class="submit" type="submit" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
+        </button>
+      </form>
+    </div>
+
+    <p class="help">Need access? Ask your lab coordinator.</p>
+  </section>
+
+  <!-- Right: live-printing vase (decorative, hidden on small screens) -->
+  <aside class="art" aria-hidden="true">
+    <svg class="vase" viewBox="20 50 360 440" preserveAspectRatio="xMidYMid meet">
+      <g class="plate" fill="none" stroke="#9cc6ea" stroke-width=".8" opacity=".5">
+        <ellipse cx="200" cy="440" rx="170" ry="34" fill="rgba(255,255,255,.07)" />
+        <ellipse cx="200" cy="440" rx="120" ry="24" />
+        <ellipse cx="200" cy="440" rx="70" ry="14" />
+      </g>
+
+      <ellipse *ngFor="let l of layers; let i = index" class="layer" [class.on]="i < printed" cx="200" [attr.cy]="l.y"
+        [attr.rx]="l.r" [attr.ry]="l.ry" [style.fill]="l.fill" [style.stroke]="l.stroke" />
+
+      <g class="nozzle" *ngIf="animate" [style.transform]="nozzleTransform">
+        <rect x="-17" y="-40" width="34" height="26" rx="4" fill="#e6eef6" />
+        <rect x="-11" y="-16" width="22" height="6" fill="#b9c8d8" />
+        <polygon points="-7,-10 7,-10 2,0 -2,0" fill="#ff7a45" />
+      </g>
+    </svg>
+
+    <p class="caption">Book a printer.<br />Upload your model.<br />Collect it when it’s done.</p>
+  </aside>
+</main>
