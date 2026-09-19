@@ -246,9 +246,23 @@ export class JobSubmissionComponent implements OnInit {
     return h > 0 ? `${h}h ${rem}m` : `${rem}m`;
   }
 
+  getPrinterLabel(p: PrinterOption): string {
+    let label = p.name || p.displayName || p.id;
+    if (p.currentMaterial) {
+      label += ` — ${p.currentMaterial}`;
+      if (p.currentColour) {
+        label += ` (${p.currentColour})`;
+      }
+    }
+    if (p.status) {
+      label += ` · ${p.status}`;
+    }
+    return label;
+  }
+
   getSelectedPrinterName(): string {
     const found = this.printers.find((p) => p.id === this.selectedPrinterId);
-    return found ? found.displayName : this.selectedPrinterId;
+    return found ? (found.name || found.displayName || found.id) : this.selectedPrinterId;
   }
 
   startNewSubmission(): void {

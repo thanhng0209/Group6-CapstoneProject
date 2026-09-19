@@ -51,6 +51,13 @@
       <span class="balance-hint">Funds are deducted on job submission and auto-refunded if cancelled within policy</span>
     </div>
     <div class="balance-action">
+      <button type="button" class="topup-btn" (click)="openTopUpModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        + Top Up Balance
+      </button>
       <a routerLink="/submit" class="quick-submit-link">
         Upload &amp; Print G-code →
       </a>
@@ -144,6 +151,87 @@
       </table>
     </div>
   </section>
+
+  <!-- Top-Up Modal -->
+  <div class="modal-backdrop" *ngIf="showTopUpModal" (click)="closeTopUpModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">💳</span>
+          <h3>Top Up Student Balance</h3>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeTopUpModal()" title="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-intro">
+          Add funds to your 3D print wallet. Balance is available immediately for submitting print jobs.
+        </p>
+
+        <!-- Current Balance -->
+        <div class="topup-current-box">
+          <span class="label">Current Available Balance:</span>
+          <span class="val font-mono font-semibold">${{ (dashboard.balance || 0).toFixed(2) }}</span>
+        </div>
+
+        <!-- Quick Preset Amount Chips -->
+        <label class="topup-field-label">Select Preset Amount:</label>
+        <div class="preset-chips">
+          <button
+            type="button"
+            *ngFor="let preset of presetAmounts"
+            class="chip-btn"
+            [class.active]="topUpAmount === preset"
+            (click)="selectPresetAmount(preset)"
+          >
+            +${{ preset }}
+          </button>
+        </div>
+
+        <!-- Custom Amount Input -->
+        <label class="topup-field-label" for="customAmount">Or Enter Custom Amount ($):</label>
+        <div class="custom-amount-wrap">
+          <span class="currency-prefix">$</span>
+          <input
+            id="customAmount"
+            type="number"
+            min="0.01"
+            step="1"
+            placeholder="0.00"
+            [(ngModel)]="topUpAmount"
+            (input)="onCustomAmountChange()"
+          />
+        </div>
+
+        <!-- Projected Balance Summary -->
+        <div class="projected-balance-box" *ngIf="isValidTopUpAmount()">
+          <div class="proj-row">
+            <span class="proj-label">Projected Balance After Top-up:</span>
+            <strong class="proj-val">${{ getProjectedBalance().toFixed(2) }}</strong>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="topup-error" *ngIf="topUpErrorMessage">
+          ⚠️ {{ topUpErrorMessage }}
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-btn" [disabled]="isToppingUp" (click)="closeTopUpModal()">Cancel</button>
+        <button
+          type="button"
+          class="confirm-topup-btn"
+          [disabled]="!isValidTopUpAmount() || isToppingUp"
+          (click)="confirmTopUp()"
+        >
+          <span *ngIf="!isToppingUp">Confirm Top-Up (+${{ (topUpAmount || 0).toFixed(2) }})</span>
+          <span *ngIf="isToppingUp">Processing...</span>
+          <span class="spinner" *ngIf="isToppingUp"></span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="state-container loading" *ngIf="isLoading">

@@ -65,7 +65,7 @@
         <label class="printer-label" for="printerSelect">Target printer:</label>
         <select id="printerSelect" [(ngModel)]="selectedPrinterId" (change)="onPrinterChange()">
           <option value="" disabled>— Choose a printer —</option>
-          <option *ngFor="let p of printers" [value]="p.id">{{ p.displayName }}</option>
+          <option *ngFor="let p of printers" [value]="p.id">{{ getPrinterLabel(p) }}</option>
         </select>
       </div>
 
@@ -133,7 +133,7 @@
         <div class="file-info-pill" *ngIf="selectedFile" (click)="$event.stopPropagation()">
           <span class="file-name">{{ selectedFile.name }}</span>
           <span class="file-size">{{ fileSizeFormatted }}</span>
-          <button type="button" class="file-clear-btn" (click)="clearFile($event)" title="Remove file">✕</button>
+          <button type="button" class="file-clear-btn" (click)="clearFile($event)" title="Clear file and choose another" aria-label="Clear selected file">✕</button>
         </div>
       </div>
 

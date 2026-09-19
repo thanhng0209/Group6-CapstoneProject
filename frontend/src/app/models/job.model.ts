@@ -2,7 +2,12 @@ export type JobStatus = 'QUEUED' | 'PRINTING' | 'COMPLETED' | 'FAILED' | 'CANCEL
 
 export interface PrinterOption {
   id: string;
-  displayName: string;
+  name?: string;
+  displayName?: string;
+  model?: string;
+  status?: string;
+  currentMaterial?: string;
+  currentColour?: string;
 }
 
 export interface GcodeUploadResponse {

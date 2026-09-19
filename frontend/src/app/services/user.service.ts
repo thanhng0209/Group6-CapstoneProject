@@ -13,4 +13,8 @@ export class UserService {
     // JWT is attached automatically by jwt.interceptor.ts
     return this.http.get<UserDashboard>(`${API_BASE}/user/dashboard`);
   }
+
+  topUpBalance(uniId: string, amount: number): Observable<any> {
+    return this.http.post<any>(`${API_BASE}/wallet/${encodeURIComponent(uniId)}/credit?amount=${amount}`, {});
+  }
 }
