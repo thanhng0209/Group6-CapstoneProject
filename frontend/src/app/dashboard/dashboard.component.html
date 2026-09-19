@@ -1,156 +1,358 @@
-<div class="dashboard-container" *ngIf="!isLoading && dashboard">
-  <!-- Top Navigation & Header -->
-  <header class="dashboard-header">
-    <div class="user-intro">
-      <div class="brand-tag">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="brand-icon">
-          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
-          <line x1="12" y1="22" x2="12" y2="15.5"/>
-          <polyline points="22 8.5 12 15.5 2 8.5"/>
+<div class="dashboard-shell" *ngIf="!isLoading && dashboard">
+
+  <!-- Sidebar -->
+  <aside class="dashboard-sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+          <line x1="12" y1="22" x2="12" y2="15.5" />
+          <polyline points="22 8.5 12 15.5 2 8.5" />
         </svg>
-        UWA 3D Print Farm
       </div>
-      <h1>Welcome, {{ dashboard.fullName }}</h1>
-      <div class="header-badges">
-        <span class="role-badge">{{ dashboard.role }}</span>
-        <span class="uni-id-badge">{{ dashboard.uniId }}</span>
-      </div>
-    </div>
 
-    <div class="header-actions">
-      <a *ngIf="dashboard.role === 'ADMIN'" routerLink="/admin" class="admin-nav-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-          <line x1="8" y1="21" x2="16" y2="21"></line>
-          <line x1="12" y1="17" x2="12" y2="21"></line>
-        </svg>
-        Admin Console
-      </a>
-      <a routerLink="/submit" class="submit-nav-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Submit New Job
-      </a>
-      <button class="logout-btn" (click)="logout()">Sign out</button>
-    </div>
-  </header>
-
-  <!-- Notification Banner -->
-  <div class="feedback-banner" *ngIf="feedbackMessage" [class.success]="feedbackMessage.type === 'success'" [class.error]="feedbackMessage.type === 'error'">
-    <span class="feedback-icon">{{ feedbackMessage.type === 'success' ? '✅' : '⚠️' }}</span>
-    <span class="feedback-text">{{ feedbackMessage.text }}</span>
-  </div>
-
-  <!-- Balance Card -->
-  <section class="balance-card">
-    <div class="balance-info">
-      <span class="balance-label">Available Account Balance</span>
-      <span class="balance-value">${{ dashboard.balance.toFixed(2) }}</span>
-      <span class="balance-hint">Funds are deducted on job submission and auto-refunded if cancelled within policy</span>
-    </div>
-    <div class="balance-action">
-      <button type="button" class="topup-btn" (click)="openTopUpModal()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        + Top Up Balance
-      </button>
-      <a routerLink="/submit" class="quick-submit-link">
-        Upload &amp; Print G-code →
-      </a>
-    </div>
-  </section>
-
-  <!-- Print Jobs Section -->
-  <section class="jobs-section">
-    <div class="section-title-bar">
       <div>
-        <h2>Your Print Jobs</h2>
-        <div class="live-indicator-wrapper">
-          <span class="live-dot"></span>
-          <span class="live-text">Real-time tracking active</span>
+        <strong>UWA</strong>
+        <span>3D PRINT FARM</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+        class="sidebar-link">
+
+        <span class="nav-icon">▦</span>
+        <span>Summary</span>
+      </a>
+
+      <a routerLink="/submit" class="sidebar-link">
+
+        <span class="nav-icon">＋</span>
+        <span>Submit Print Job</span>
+      </a>
+
+      <a routerLink="/dashboard" class="sidebar-link">
+
+        <span class="nav-icon">▤</span>
+        <span>My Print Jobs</span>
+      </a>
+
+      <div class="sidebar-link disabled">
+        <span class="nav-icon">✓</span>
+        <span>Pending Collection</span>
+        <span class="coming-soon">Soon</span>
+      </div>
+
+      <div class="sidebar-link disabled">
+        <span class="nav-icon">$</span>
+        <span>Transaction History</span>
+        <span class="coming-soon">Soon</span>
+      </div>
+
+      <a *ngIf="dashboard.role === 'ADMIN'" routerLink="/admin" class="sidebar-link admin-link">
+
+        <span class="nav-icon">⚙</span>
+        <span>Farm Manager</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          {{ dashboard.fullName.charAt(0).toUpperCase() }}
+        </div>
+
+        <div class="user-details">
+          <strong>{{ dashboard.fullName }}</strong>
+          <span>{{ dashboard.uniId }}</span>
         </div>
       </div>
-      <div class="refresh-controls">
-        <button type="button" class="refresh-btn" [disabled]="isRefreshing" (click)="manualRefresh()" title="Refresh print jobs">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="isRefreshing">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          {{ isRefreshing ? 'Updating...' : 'Refresh' }}
-        </button>
+
+      <button type="button" class="sidebar-logout" (click)="logout()">
+
+        <span>↪</span>
+        Sign out
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <!-- Main dashboard -->
+  <main class="dashboard-main">
+
+    <!-- Top header -->
+    <header class="dashboard-topbar">
+
+      <div>
+        <div class="page-label">STUDENT DASHBOARD</div>
+
+        <h1>
+          Welcome, {{ dashboard.fullName }}
+        </h1>
       </div>
+
+      <div class="topbar-actions">
+
+        <span class="role-badge">
+          {{ dashboard.role }}
+        </span>
+
+        <a routerLink="/submit" class="submit-nav-btn">
+          <span>＋</span>
+          Submit New Job
+        </a>
+
+      </div>
+
+    </header>
+
+
+    <!-- Feedback -->
+    <div class="feedback-banner" *ngIf="feedbackMessage" [class.success]="feedbackMessage.type === 'success'"
+      [class.error]="feedbackMessage.type === 'error'">
+
+      <span class="feedback-icon">
+        {{ feedbackMessage.type === 'success' ? '✓' : '⚠' }}
+      </span>
+
+      <span class="feedback-text">
+        {{ feedbackMessage.text }}
+      </span>
+
     </div>
 
-    <!-- Empty State -->
-    <div class="empty-state-box" *ngIf="jobs.length === 0">
-      <div class="empty-icon">📂</div>
-      <h3>No print jobs submitted yet</h3>
-      <p>Upload your sliced G-code file to validate compatibility and queue your first 3D print.</p>
-      <a routerLink="/submit" class="submit-nav-btn empty-action">
-        Submit Your First Print Job
-      </a>
-    </div>
 
-    <!-- Jobs Table -->
-    <div class="table-responsive" *ngIf="jobs.length > 0">
-      <table class="jobs-table">
-        <thead>
-          <tr>
-            <th>Job ID</th>
-            <th>File Name</th>
-            <th>Printer</th>
-            <th>Material</th>
-            <th>Est. Weight / Time</th>
-            <th>Cost</th>
-            <th>Submitted</th>
-            <th>Status</th>
-            <th class="text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let job of jobs">
-            <td class="col-id font-mono">#{{ job.id }}</td>
-            <td class="col-filename font-mono" [title]="job.fileName">{{ job.fileName }}</td>
-            <td class="col-printer">
-              <span class="printer-tag">{{ job.printerId }}</span>
-            </td>
-            <td>{{ job.material }}</td>
-            <td class="col-estimates">
-              {{ job.estimatedGrams }}g &nbsp;·&nbsp; {{ formatMinutes(job.estimatedMinutes) }}
-            </td>
-            <td class="col-cost font-semibold">${{ (job.cost || 0).toFixed(2) }}</td>
-            <td class="col-date">{{ formatDate(job.queuedAt) }}</td>
-            <td class="col-status">
-              <span class="status-badge" [ngClass]="'status-' + job.status.toLowerCase()">
-                <span class="badge-dot" *ngIf="job.status === 'QUEUED' || job.status === 'PRINTING'"></span>
-                {{ job.status }}
-              </span>
-            </td>
-            <td class="col-actions text-right">
-              <button
-                *ngIf="isEligibleForCancel(job)"
-                type="button"
-                class="cancel-btn"
-                [disabled]="cancellingJobId === job.id"
-                (click)="cancelJob(job)"
-              >
-                <span *ngIf="cancellingJobId !== job.id">Cancel</span>
-                <span *ngIf="cancellingJobId === job.id" class="cancelling-spinner">...</span>
-              </button>
-              <span *ngIf="!isEligibleForCancel(job)" class="ineligible-text" title="Only queued jobs can be cancelled">
-                —
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    <!-- Summary cards -->
+    <section class="summary-grid">
+
+      <article class="summary-card balance-summary">
+
+        <div class="summary-card-header">
+          <span>AVAILABLE BALANCE</span>
+          <span class="summary-icon">$</span>
+        </div>
+
+        <strong>
+          ${{ dashboard.balance.toFixed(2) }}
+        </strong>
+
+        <button type="button" class="summary-action" (click)="openTopUpModal()">
+
+          + Top Up Balance
+        </button>
+
+      </article>
+
+
+      <article class="summary-card">
+
+        <div class="summary-card-header">
+          <span>ACTIVE JOBS</span>
+          <span class="summary-icon">◉</span>
+        </div>
+
+        <strong>
+          {{ activeJobsCount }}
+        </strong>
+
+        <span class="summary-description">
+          Queued or currently printing
+        </span>
+
+      </article>
+
+
+      <article class="summary-card">
+
+        <div class="summary-card-header">
+          <span>ESTIMATED FILAMENT</span>
+          <span class="summary-icon">◌</span>
+        </div>
+
+        <strong>
+          {{ estimatedFilamentGrams }}g
+        </strong>
+
+        <span class="summary-description">
+          Across submitted jobs
+        </span>
+
+      </article>
+
+    </section>
+
+
+    <!-- Print jobs -->
+    <section class="jobs-section">
+
+      <div class="section-title-bar">
+
+        <div>
+          <h2>Your Print Jobs</h2>
+
+          <div class="live-indicator-wrapper">
+            <span class="live-dot"></span>
+            <span class="live-text">
+              Real-time tracking active
+            </span>
+          </div>
+        </div>
+
+        <div class="refresh-controls">
+
+          <button type="button" class="refresh-btn" [disabled]="isRefreshing" (click)="manualRefresh()">
+
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              [class.spinning]="isRefreshing">
+
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+
+            </svg>
+
+            {{ isRefreshing ? 'Updating...' : 'Refresh' }}
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- Empty state -->
+      <div class="empty-state-box" *ngIf="jobs.length === 0">
+
+        <div class="empty-icon">📂</div>
+
+        <h3>No print jobs submitted yet</h3>
+
+        <p>
+          Upload your sliced G-code file to validate compatibility
+          and queue your first 3D print.
+        </p>
+
+        <a routerLink="/submit" class="submit-nav-btn empty-action">
+
+          Submit Your First Print Job
+
+        </a>
+
+      </div>
+
+
+      <!-- Existing jobs table -->
+      <div class="table-responsive" *ngIf="jobs.length > 0">
+
+        <table class="jobs-table">
+
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>File Name</th>
+              <th>Printer</th>
+              <th>Material</th>
+              <th>Est. Weight / Time</th>
+              <th>Cost</th>
+              <th>Submitted</th>
+              <th>Status</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            <tr *ngFor="let job of jobs">
+
+              <td class="col-id font-mono">
+                #{{ job.id }}
+              </td>
+
+              <td class="col-filename font-mono" [title]="job.fileName">
+
+                {{ job.fileName }}
+
+              </td>
+
+              <td>
+                <span class="printer-tag">
+                  {{ job.printerId }}
+                </span>
+              </td>
+
+              <td>
+                {{ job.material }}
+              </td>
+
+              <td class="col-estimates">
+                {{ job.estimatedGrams }}g
+                &nbsp;·&nbsp;
+                {{ formatMinutes(job.estimatedMinutes) }}
+              </td>
+
+              <td class="col-cost font-semibold">
+                ${{ (job.cost || 0).toFixed(2) }}
+              </td>
+
+              <td class="col-date">
+                {{ formatDate(job.queuedAt) }}
+              </td>
+
+              <td>
+
+                <span class="status-badge" [ngClass]="'status-' + job.status.toLowerCase()">
+
+                  <span class="badge-dot" *ngIf="job.status === 'QUEUED' ||
+                           job.status === 'PRINTING'">
+                  </span>
+
+                  {{ job.status }}
+
+                </span>
+
+              </td>
+
+              <td class="text-right">
+
+                <button *ngIf="isEligibleForCancel(job)" type="button" class="cancel-btn"
+                  [disabled]="cancellingJobId === job.id" (click)="cancelJob(job)">
+
+                  <span *ngIf="cancellingJobId !== job.id">
+                    Cancel
+                  </span>
+
+                  <span *ngIf="cancellingJobId === job.id">
+                    ...
+                  </span>
+
+                </button>
+
+                <span *ngIf="!isEligibleForCancel(job)" class="ineligible-text">
+
+                  —
+
+                </span>
+
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
 
   <!-- Top-Up Modal -->
   <div class="modal-backdrop" *ngIf="showTopUpModal" (click)="closeTopUpModal()">
@@ -177,13 +379,8 @@
         <!-- Quick Preset Amount Chips -->
         <label class="topup-field-label">Select Preset Amount:</label>
         <div class="preset-chips">
-          <button
-            type="button"
-            *ngFor="let preset of presetAmounts"
-            class="chip-btn"
-            [class.active]="topUpAmount === preset"
-            (click)="selectPresetAmount(preset)"
-          >
+          <button type="button" *ngFor="let preset of presetAmounts" class="chip-btn"
+            [class.active]="topUpAmount === preset" (click)="selectPresetAmount(preset)">
             +${{ preset }}
           </button>
         </div>
@@ -192,15 +389,8 @@
         <label class="topup-field-label" for="customAmount">Or Enter Custom Amount ($):</label>
         <div class="custom-amount-wrap">
           <span class="currency-prefix">$</span>
-          <input
-            id="customAmount"
-            type="number"
-            min="0.01"
-            step="1"
-            placeholder="0.00"
-            [(ngModel)]="topUpAmount"
-            (input)="onCustomAmountChange()"
-          />
+          <input id="customAmount" type="number" min="0.01" step="1" placeholder="0.00" [(ngModel)]="topUpAmount"
+            (input)="onCustomAmountChange()" />
         </div>
 
         <!-- Projected Balance Summary -->
@@ -219,12 +409,8 @@
 
       <div class="modal-footer">
         <button type="button" class="secondary-btn" [disabled]="isToppingUp" (click)="closeTopUpModal()">Cancel</button>
-        <button
-          type="button"
-          class="confirm-topup-btn"
-          [disabled]="!isValidTopUpAmount() || isToppingUp"
-          (click)="confirmTopUp()"
-        >
+        <button type="button" class="confirm-topup-btn" [disabled]="!isValidTopUpAmount() || isToppingUp"
+          (click)="confirmTopUp()">
           <span *ngIf="!isToppingUp">Confirm Top-Up (+${{ (topUpAmount || 0).toFixed(2) }})</span>
           <span *ngIf="isToppingUp">Processing...</span>
           <span class="spinner" *ngIf="isToppingUp"></span>
@@ -232,14 +418,31 @@
       </div>
     </div>
   </div>
+
 </div>
 
+
+<!-- Existing loading state -->
 <div class="state-container loading" *ngIf="isLoading">
+
   <div class="main-spinner"></div>
-  <p>Loading your student print dashboard...</p>
+
+  <p>
+    Loading your student print dashboard...
+  </p>
+
 </div>
 
+
+<!-- Existing error state -->
 <div class="state-container error" *ngIf="errorMessage && !isLoading">
+
   <p>{{ errorMessage }}</p>
-  <button type="button" class="retry-btn" (click)="loadInitialData()">Retry</button>
+
+  <button type="button" class="retry-btn" (click)="loadInitialData()">
+
+    Retry
+
+  </button>
+
 </div>
