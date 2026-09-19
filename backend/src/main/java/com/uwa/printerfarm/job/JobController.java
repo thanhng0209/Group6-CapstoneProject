@@ -1,10 +1,14 @@
 package com.uwa.printerfarm.job;
 
+import com.uwa.printerfarm.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,6 +39,37 @@ public class JobController {
     public JobController(JobSubmissionService jobSubmissionService,
                          JobLifecycleService jobLifecycleService) {
         this(jobSubmissionService, jobLifecycleService, null);
+    }
+
+    private String resolveUniId(UserPrincipal userPrincipal, Authentication authentication, String fallback) {
+        if (userPrincipal != null && userPrincipal.getUniId() != null) {
+            return userPrincipal.getUniId();
+        }
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            Object p = authentication.getPrincipal();
+            if (p instanceof UserPrincipal up) {
+                return up.getUniId();
+            } else if (p instanceof UserDetails ud) {
+                return ud.getUsername();
+            } else if (p instanceof String s && !s.isBlank()) {
+                return s;
+            }
+            return authentication.getName();
+        }
+        Authentication ctxAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (ctxAuth != null && ctxAuth.isAuthenticated() && !"anonymousUser".equals(ctxAuth.getPrincipal())) {
+            Object p = ctxAuth.getPrincipal();
+            if (p instanceof UserPrincipal up) {
+                return up.getUniId();
+            } else if (p instanceof UserDetails ud) {
+                return ud.getUsername();
+            } else if (p instanceof String s && !s.isBlank()) {
+                return s;
+            }
+            return ctxAuth.getName();
+        }
+        return fallback;
     }
 
     /**
