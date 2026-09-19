@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -100,5 +101,22 @@ class JobControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
+    }
+
+    @Test
+    void submitJobWithMissingPrinterIdReturnsBadRequest() throws Exception {
+        JobController.JobSubmitRequest request = new JobController.JobSubmitRequest(
+                null, "", "cube.gcode", "PLA",
+                new BigDecimal("10.00"), new BigDecimal("20.00"), null
+        );
+
+        mockMvc.perform(post("/api/jobs/submit")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MISSING_PRINTER_ID"));
+
+        verify(jobSubmissionService, never()).submit(any());
     }
 }
