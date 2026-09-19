@@ -78,4 +78,46 @@ class JobNotificationServiceTest {
                 .isInstanceOf(NotificationDeliveryException.class)
                 .hasCauseInstanceOf(MailSendException.class);
     }
+
+    @Test
+    void completedJobUsesActualUserEmailFromDatabaseWhenAvailable() {
+        com.uwa.printerfarm.repository.UserRepository userRepo = mock(com.uwa.printerfarm.repository.UserRepository.class);
+        com.uwa.printerfarm.model.User user = com.uwa.printerfarm.model.User.builder()
+                .uniId("22345678")
+                .email("student.actual@uwa.edu.au")
+                .build();
+        org.mockito.Mockito.when(userRepo.findByUniId("22345678")).thenReturn(java.util.Optional.of(user));
+
+        JobNotificationService serviceWithRepo = new JobNotificationService(
+                mailSender, userRepo, "printerfarm-noreply@uwa.edu.au", "@student.uwa.edu.au");
+
+        Job job = newPrintingJob();
+        jobLifecycleService.transition(job, JobStatus.COMPLETED);
+
+        serviceWithRepo.notifyJobFinished(job);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender, org.mockito.Mockito.atLeastOnce()).send(captor.capture());
+        SimpleMailMessage sent = captor.getValue();
+        assertThat(sent.getTo()).containsExactly("student.actual@uwa.edu.au");
+    }
+
+    @Test
+    void completedJobFallsBackToDefaultEmailWhenUserNotInDatabase() {
+        com.uwa.printerfarm.repository.UserRepository userRepo = mock(com.uwa.printerfarm.repository.UserRepository.class);
+        org.mockito.Mockito.when(userRepo.findByUniId("22345678")).thenReturn(java.util.Optional.empty());
+
+        JobNotificationService serviceWithRepo = new JobNotificationService(
+                mailSender, userRepo, "printerfarm-noreply@uwa.edu.au", "@student.uwa.edu.au");
+
+        Job job = newPrintingJob();
+        jobLifecycleService.transition(job, JobStatus.COMPLETED);
+
+        serviceWithRepo.notifyJobFinished(job);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender, org.mockito.Mockito.atLeastOnce()).send(captor.capture());
+        SimpleMailMessage sent = captor.getValue();
+        assertThat(sent.getTo()).containsExactly("22345678@student.uwa.edu.au");
+    }
 }
