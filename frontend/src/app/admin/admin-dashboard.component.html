@@ -1,0 +1,464 @@
+<div class="admin-dashboard-container">
+  <!-- Top Navigation & Header -->
+  <header class="admin-header">
+    <div class="brand-block">
+      <div class="brand-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="brand-icon">
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+          <line x1="12" y1="22" x2="12" y2="15.5"/>
+          <polyline points="22 8.5 12 15.5 2 8.5"/>
+        </svg>
+        <span>UWA 3D Print Farm</span>
+        <span class="admin-pill">ADMIN CONSOLE</span>
+      </div>
+      <h1>Fleet Monitoring &amp; Operations</h1>
+    </div>
+
+    <div class="header-controls">
+      <a routerLink="/dashboard" class="action-btn secondary-btn" title="Switch to user view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        User Portal
+      </a>
+
+      <button class="action-btn refresh-btn" (click)="manualRefresh()" [disabled]="isRefreshing" title="Refresh all telemetry data">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="isRefreshing">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
+
+      <button class="action-btn logout-btn" (click)="logout()" title="Log out of account">
+        Sign out
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  <div class="action-banner" *ngIf="actionMessage" [class.success]="actionMessage.type === 'success'" [class.error]="actionMessage.type === 'error'">
+    <span class="banner-icon">{{ actionMessage.type === 'success' ? '✓' : '⚠️' }}</span>
+    <span class="banner-text">{{ actionMessage.text }}</span>
+  </div>
+
+  <!-- Tab Navigation Bar -->
+  <nav class="admin-nav-tabs">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'farm-status'"
+      (click)="setActiveTab('farm-status')"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>
+      Farm Status
+      <span class="tab-count">{{ printers.length }}</span>
+    </button>
+
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'jobs'"
+      (click)="setActiveTab('jobs')"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      Job Management
+      <span class="tab-count">{{ allJobs.length }}</span>
+    </button>
+
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'financial'"
+      (click)="setActiveTab('financial')"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      Financial &amp; Refunds
+      <span class="tab-badge" *ngIf="pendingRefunds.length > 0">{{ pendingRefunds.length }}</span>
+    </button>
+  </nav>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isInitialLoading">
+    <div class="spinner"></div>
+    <p>Connecting to farm telemetry and ledger...</p>
+  </div>
+
+  <main *ngIf="!isInitialLoading" class="tab-content">
+    <!-- ================================================================= -->
+    <!-- TAB 1: FARM STATUS                                               -->
+    <!-- ================================================================= -->
+    <section *ngIf="activeTab === 'farm-status'" class="tab-pane">
+      <!-- Quick Summary Stat Cards -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Total Fleet Units</span>
+            <span class="stat-icon">🖨️</span>
+          </div>
+          <div class="stat-val">{{ printers.length }}</div>
+          <div class="stat-sub">Physical 3D printers registered</div>
+        </div>
+
+        <div class="stat-card highlight-blue">
+          <div class="stat-header">
+            <span class="stat-label">Currently Printing</span>
+            <span class="live-dot-pulse"></span>
+          </div>
+          <div class="stat-val text-blue">{{ printingPrintersCount }}</div>
+          <div class="stat-sub">Active print runs in progress</div>
+        </div>
+
+        <div class="stat-card highlight-green">
+          <div class="stat-header">
+            <span class="stat-label">Idle / Ready</span>
+            <span class="idle-dot"></span>
+          </div>
+          <div class="stat-val text-green">{{ idlePrintersCount }}</div>
+          <div class="stat-sub">Awaiting next queued g-code</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Total Filament Used</span>
+            <span class="stat-icon">🧵</span>
+          </div>
+          <div class="stat-val">{{ totalFilamentGrams | number:'1.0-1' }} g</div>
+          <div class="stat-sub">Estimated consumption across jobs</div>
+        </div>
+      </div>
+
+      <!-- Section Title & Refresh -->
+      <div class="pane-header">
+        <div>
+          <h2>Printer Fleet Status</h2>
+          <p class="pane-subtitle">Live hardware telemetry and currently loaded spools</p>
+        </div>
+        <div class="pane-meta">
+          <span class="live-tag">
+            <span class="pulse-circle"></span> Live Updates
+          </span>
+          <span class="timestamp-tag">Updated {{ formatDate(lastRefreshed.toISOString()) }}</span>
+        </div>
+      </div>
+
+      <!-- Printer Cards Grid -->
+      <div class="printer-grid" *ngIf="printers.length > 0">
+        <div
+          class="printer-card"
+          *ngFor="let printer of printers"
+          [class.status-printing]="(printer.status || '').toUpperCase() === 'PRINTING'"
+          [class.status-idle]="(printer.status || '').toUpperCase() === 'IDLE'"
+        >
+          <div class="printer-card-top">
+            <div class="printer-title-group">
+              <span class="printer-id-tag">{{ printer.id }}</span>
+              <h3 class="printer-name">{{ printer.name }}</h3>
+              <span class="printer-model-badge">{{ printer.model }}</span>
+            </div>
+
+            <!-- Hardware State Badge -->
+            <div
+              class="state-badge"
+              [class.state-printing]="(printer.status || '').toUpperCase() === 'PRINTING'"
+              [class.state-idle]="(printer.status || '').toUpperCase() === 'IDLE'"
+              [class.state-offline]="(printer.status || '').toUpperCase() === 'OFFLINE' || (printer.status || '').toUpperCase() === 'MAINTENANCE'"
+            >
+              <span class="badge-dot"></span>
+              {{ printer.status || 'IDLE' }}
+            </div>
+          </div>
+
+          <!-- Loaded Filament Section -->
+          <div class="filament-box">
+            <div class="filament-header">
+              <span class="filament-icon">🧵</span>
+              <span class="filament-label">Loaded Filament:</span>
+            </div>
+            <div class="filament-details">
+              <span class="material-chip">{{ printer.loadedFilament || printer.currentMaterial || 'None' }}</span>
+              <span class="colour-spec" *ngIf="printer.currentColour">
+                <span class="color-preview-circle"></span>
+                {{ printer.currentColour }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Job Activity Metrics -->
+          <div class="activity-section" *ngIf="printer.jobCountsByStatus">
+            <div class="activity-title">Job History Breakdown</div>
+            <div class="activity-pills">
+              <span class="act-pill printing" *ngIf="printer.jobCountsByStatus['PRINTING']">
+                Printing: {{ printer.jobCountsByStatus['PRINTING'] }}
+              </span>
+              <span class="act-pill queued" *ngIf="printer.jobCountsByStatus['QUEUED']">
+                Queued: {{ printer.jobCountsByStatus['QUEUED'] }}
+              </span>
+              <span class="act-pill completed" *ngIf="printer.jobCountsByStatus['COMPLETED']">
+                Completed: {{ printer.jobCountsByStatus['COMPLETED'] }}
+              </span>
+              <span class="act-pill failed" *ngIf="printer.jobCountsByStatus['FAILED']">
+                Failed: {{ printer.jobCountsByStatus['FAILED'] }}
+              </span>
+              <span
+                class="act-pill empty"
+                *ngIf="!printer.jobCountsByStatus['PRINTING'] && !printer.jobCountsByStatus['QUEUED'] && !printer.jobCountsByStatus['COMPLETED'] && !printer.jobCountsByStatus['FAILED']"
+              >
+                No jobs processed yet
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-card" *ngIf="printers.length === 0">
+        <p>No printers detected in farm inventory.</p>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: JOB MANAGEMENT                                            -->
+    <!-- ================================================================= -->
+    <section *ngIf="activeTab === 'jobs'" class="tab-pane">
+      <div class="pane-header">
+        <div>
+          <h2>Global Job Management</h2>
+          <p class="pane-subtitle">Manage, monitor, and filter all print jobs across the farm</p>
+        </div>
+      </div>
+
+      <!-- Filters & Search Toolbar -->
+      <div class="table-toolbar">
+        <div class="status-filter-group">
+          <span class="filter-label">Filter Status:</span>
+          <button
+            *ngFor="let opt of statusOptions"
+            class="filter-chip"
+            [class.active]="selectedStatusFilter === opt"
+            (click)="setStatusFilter(opt)"
+          >
+            {{ opt }}
+            <span class="chip-count">{{ getJobCountByStatus(opt) }}</span>
+          </button>
+        </div>
+
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search by ID, User, file, printer..."
+            class="search-input"
+          />
+          <button *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()" class="clear-search-btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Jobs Table -->
+      <div class="table-container" *ngIf="filteredJobs.length > 0">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>User ID</th>
+              <th>File Name</th>
+              <th>Assigned Printer</th>
+              <th>Material</th>
+              <th>Est. Weight</th>
+              <th>Est. Time</th>
+              <th>Cost</th>
+              <th>Status</th>
+              <th>Queued At</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let job of filteredJobs">
+              <td class="cell-id">#{{ job.id }}</td>
+              <td class="cell-user">
+                <span class="user-badge">{{ job.ownerUniId }}</span>
+              </td>
+              <td class="cell-file" title="{{ job.fileName }}">{{ job.fileName }}</td>
+              <td>
+                <span class="printer-badge">{{ job.printerId || 'Unassigned' }}</span>
+              </td>
+              <td>{{ job.material }}</td>
+              <td>{{ job.estimatedGrams ? (job.estimatedGrams | number:'1.1-1') + ' g' : '-' }}</td>
+              <td>{{ formatMinutes(job.estimatedMinutes) }}</td>
+              <td class="cell-cost">${{ job.cost ? job.cost.toFixed(2) : '0.00' }}</td>
+              <td>
+                <span
+                  class="status-tag"
+                  [class.status-queued]="job.status === 'QUEUED'"
+                  [class.status-printing]="job.status === 'PRINTING'"
+                  [class.status-completed]="job.status === 'COMPLETED'"
+                  [class.status-failed]="job.status === 'FAILED'"
+                  [class.status-cancelled]="job.status === 'CANCELLED'"
+                >
+                  <span class="status-dot"></span>
+                  {{ job.status }}
+                </span>
+              </td>
+              <td class="cell-date">{{ formatDate(job.queuedAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state-box" *ngIf="filteredJobs.length === 0">
+        <p class="empty-title">No jobs match the current criteria</p>
+        <p class="empty-sub">Try selecting "ALL" status or adjusting your search query.</p>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 3: FINANCIAL & REFUNDS                                       -->
+    <!-- ================================================================= -->
+    <section *ngIf="activeTab === 'financial'" class="tab-pane">
+      <!-- Financial Overview Cards -->
+      <div class="finance-grid" *ngIf="costSummary">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Total Revenue Charged</span>
+            <span class="stat-icon">💰</span>
+          </div>
+          <div class="stat-val text-green">${{ costSummary.totalCharged ? costSummary.totalCharged.toFixed(2) : '0.00' }}</div>
+          <div class="stat-sub">Gross revenue from completed &amp; queued prints</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Total Refunds Issued</span>
+            <span class="stat-icon">↩️</span>
+          </div>
+          <div class="stat-val text-red">${{ costSummary.totalRefunded ? costSummary.totalRefunded.toFixed(2) : '0.00' }}</div>
+          <div class="stat-sub">Refunds returned to student &amp; staff balances</div>
+        </div>
+
+        <div class="stat-card highlight-blue">
+          <div class="stat-header">
+            <span class="stat-label">Net Operating Revenue</span>
+            <span class="stat-icon">📈</span>
+          </div>
+          <div class="stat-val text-blue">${{ costSummary.netRevenue ? costSummary.netRevenue.toFixed(2) : '0.00' }}</div>
+          <div class="stat-sub">Total Charged minus Total Refunded</div>
+        </div>
+
+        <!-- Material Consumption Breakdown -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Filament Usage by Material</span>
+            <span class="stat-icon">⚖️</span>
+          </div>
+          <div class="material-list">
+            <div class="material-row" *ngFor="let mat of getFilamentKeys()">
+              <span class="mat-name">{{ mat }}</span>
+              <span class="mat-grams">{{ filamentUsage[mat] | number:'1.0-1' }} g</span>
+            </div>
+            <div class="material-row empty-row" *ngIf="getFilamentKeys().length === 0">
+              <span>No filament consumed yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Refunds Table Section -->
+      <div class="refunds-section">
+        <div class="pane-header">
+          <div>
+            <div class="refund-title-row">
+              <h2>Pending Refund Requests</h2>
+              <span class="badge-pending" *ngIf="pendingRefunds.length > 0">
+                {{ pendingRefunds.length }} Action Required
+              </span>
+            </div>
+            <p class="pane-subtitle">
+              Cancellation requests submitted outside the automatic refund window awaiting farm manager review.
+            </p>
+          </div>
+        </div>
+
+        <!-- Pending Refunds Table -->
+        <div class="table-container" *ngIf="pendingRefunds.length > 0">
+          <table class="admin-table refunds-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Job ID</th>
+                <th>Requester Uni ID</th>
+                <th>Refund Amount</th>
+                <th>Requested At</th>
+                <th>Status</th>
+                <th class="actions-header">Manager Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let req of pendingRefunds">
+                <td class="cell-id">#{{ req.id }}</td>
+                <td class="cell-id">Job #{{ req.jobId }}</td>
+                <td class="cell-user">
+                  <span class="user-badge">{{ req.ownerUniId }}</span>
+                </td>
+                <td class="cell-amount">
+                  <span class="amount-tag">${{ req.amount ? req.amount.toFixed(2) : '0.00' }}</span>
+                </td>
+                <td class="cell-date">{{ formatDate(req.requestedAt) }}</td>
+                <td>
+                  <span class="status-tag status-pending">
+                    <span class="status-dot"></span>
+                    {{ req.status }}
+                  </span>
+                </td>
+                <td class="cell-actions">
+                  <button
+                    class="btn-action btn-approve"
+                    (click)="approveRefund(req)"
+                    [disabled]="processingRefundIds.has(req.id)"
+                    title="Approve refund and credit user balance"
+                  >
+                    <span *ngIf="!processingRefundIds.has(req.id)">✓ Approve</span>
+                    <span *ngIf="processingRefundIds.has(req.id)" class="btn-spinner"></span>
+                  </button>
+
+                  <button
+                    class="btn-action btn-reject"
+                    (click)="rejectRefund(req)"
+                    [disabled]="processingRefundIds.has(req.id)"
+                    title="Reject refund request"
+                  >
+                    <span *ngIf="!processingRefundIds.has(req.id)">✕ Reject</span>
+                    <span *ngIf="processingRefundIds.has(req.id)" class="btn-spinner"></span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty Pending Refunds State -->
+        <div class="empty-state-box settled-box" *ngIf="pendingRefunds.length === 0">
+          <div class="settled-icon">✅</div>
+          <p class="empty-title">All Refund Requests Settled</p>
+          <p class="empty-sub">There are currently no refund requests awaiting administrator approval.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
