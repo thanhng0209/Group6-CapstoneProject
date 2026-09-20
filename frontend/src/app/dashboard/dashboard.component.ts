@@ -6,7 +6,8 @@ import { UserService } from '../services/user.service';
 import { AuthService } from '../auth/auth.service';
 import { JobService } from '../services/job.service';
 import { UserDashboard } from '../models/user.model';
-import { Job } from '../models/job.model';
+
+type DashboardJob = UserDashboard['currentJobs'][number];
 
 @Component({
   selector: 'app-dashboard',
@@ -17,12 +18,18 @@ import { Job } from '../models/job.model';
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   dashboard: UserDashboard | null = null;
-  jobs: Job[] = [];
+
   isLoading = true;
   isRefreshing = false;
   cancellingJobId: number | null = null;
+
   errorMessage: string | null = null;
-  feedbackMessage: { text: string; type: 'success' | 'error' } | null = null;
+
+  feedbackMessage: {
+    text: string;
+    type: 'success' | 'error';
+  } | null = null;
+
   lastUpdated: Date = new Date();
 
   // Top-Up Modal state
@@ -30,9 +37,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isToppingUp = false;
   topUpAmount: number | null = 20;
   topUpErrorMessage: string | null = null;
+
   readonly presetAmounts = [10, 20, 50, 100];
 
-  private pollTimer: any = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private userService: UserService,
@@ -44,9 +52,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadInitialData();
 
-    // Poll for real-time job status updates every 8 seconds
+    // Refresh the complete dashboard every 8 seconds.
     this.pollTimer = setInterval(() => {
-      this.refreshJobsSilently();
+      this.refreshDashboardSilently();
     }, 8000);
   }
 
@@ -57,94 +65,134 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Loads the complete dashboard from:
+   * GET /api/user/dashboard
+   *
+   * This provides:
+   * - User profile
+   * - Balance
+   * - Current jobs
+   * - Print history
+   */
   loadInitialData(): void {
     this.isLoading = true;
     this.errorMessage = null;
 
     this.userService.getDashboard().subscribe({
-      next: (userData) => {
-        this.dashboard = userData;
-        this.fetchJobs(() => {
-          this.isLoading = false;
-        });
-      },
-      error: () => {
-        this.isLoading = false;
-        this.errorMessage = 'Could not load dashboard profile. Please try again.';
-      },
-    });
-  }
-
-  fetchJobs(callback?: () => void): void {
-    this.jobService.getMyJobs().subscribe({
-      next: (jobList) => {
-        this.jobs = jobList;
+      next: (data) => {
+        this.dashboard = data;
         this.lastUpdated = new Date();
-        if (callback) callback();
+        this.isLoading = false;
       },
-      error: () => {
-        if (callback) callback();
+
+      error: (err) => {
+        console.error('Failed to load dashboard', err);
+        this.errorMessage = 'Failed to load dashboard data.';
+        this.isLoading = false;
       },
     });
   }
 
+  /**
+   * Manually refresh the complete dashboard.
+   */
   manualRefresh(): void {
     this.isRefreshing = true;
     this.errorMessage = null;
 
-    // Refresh user balance and jobs
     this.userService.getDashboard().subscribe({
-      next: (userData) => {
-        this.dashboard = userData;
+      next: (data) => {
+        this.dashboard = data;
+        this.lastUpdated = new Date();
+        this.isRefreshing = false;
       },
-    });
 
-    this.fetchJobs(() => {
-      this.isRefreshing = false;
+      error: (err) => {
+        console.error('Failed to refresh dashboard', err);
+        this.errorMessage = 'Failed to refresh dashboard data.';
+        this.isRefreshing = false;
+      },
     });
   }
 
-  private refreshJobsSilently(): void {
-    this.jobService.getMyJobs().subscribe({
-      next: (jobList) => {
-        this.jobs = jobList;
+  /**
+   * Background refresh used for job status updates.
+   */
+  private refreshDashboardSilently(): void {
+    this.userService.getDashboard().subscribe({
+      next: (data) => {
+        this.dashboard = data;
         this.lastUpdated = new Date();
       },
+
       error: () => {
-        // Silently ignore background polling errors
+        // Ignore background polling errors.
       },
     });
   }
 
-  isEligibleForCancel(job: Job): boolean {
+  /**
+   * Current jobs shown on the dashboard.
+   *
+   * Backend currently classifies QUEUED and PRINTING
+   * as current jobs.
+   */
+  get currentJobs(): DashboardJob[] {
+    return this.dashboard?.currentJobs ?? [];
+  }
+
+  /**
+   * Completed, failed and cancelled jobs.
+   */
+  get printHistory(): DashboardJob[] {
+    return this.dashboard?.printHistory ?? [];
+  }
+
+  get activeJobsCount(): number {
+    return this.currentJobs.length;
+  }
+
+  /**
+   * The current dashboard API does not yet return estimated
+   * filament information, so this card cannot calculate it
+   * from the new dashboard response.
+   */
+  get estimatedFilamentGrams(): number | null {
+    return null;
+  }
+
+  isEligibleForCancel(job: DashboardJob): boolean {
     return job.status === 'QUEUED';
   }
 
-  cancelJob(job: Job): void {
+  cancelJob(job: DashboardJob): void {
     if (!this.isEligibleForCancel(job)) {
       return;
     }
 
     const confirmCancel = window.confirm(
-      `Are you sure you want to cancel print job #${job.id} ("${job.fileName}")?\n\nThis will stop the job and process a refund to your balance.`
+      `Are you sure you want to cancel print job #${job.jobId} ("${job.fileName}")?\n\nThis will stop the job and process a refund to your balance.`
     );
 
     if (!confirmCancel) {
       return;
     }
 
-    this.cancellingJobId = job.id;
+    this.cancellingJobId = job.jobId;
     this.feedbackMessage = null;
 
-    this.jobService.cancelJob(job.id).subscribe({
+    this.jobService.cancelJob(job.jobId).subscribe({
       next: (res) => {
         this.cancellingJobId = null;
+
         this.feedbackMessage = {
-          text: res.message || `Job #${job.id} cancelled successfully.`,
+          text: res.message || `Job #${job.jobId} cancelled successfully.`,
           type: 'success',
         };
 
-        // Reload user dashboard to update balance and fetch updated jobs
+        // Reload the complete dashboard.
+        // The cancelled job should now appear in printHistory.
         this.loadInitialData();
 
         setTimeout(() => {
@@ -153,28 +201,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
           }
         }, 6000);
       },
+
       error: (err) => {
         this.cancellingJobId = null;
+
         const msg =
           err.error?.errors?.[0] ||
           'Failed to cancel print job. It may have already started printing.';
-        this.feedbackMessage = { text: msg, type: 'error' };
+
+        this.feedbackMessage = {
+          text: msg,
+          type: 'error',
+        };
       },
     });
   }
 
-  formatMinutes(mins: number | null | undefined): string {
-    if (mins == null || mins === 0) return '-';
-    const m = Math.round(mins);
-    const h = Math.floor(m / 60);
-    const rem = m % 60;
-    return h > 0 ? `${h}h ${rem}m` : `${rem}m`;
-  }
-
   formatDate(isoString: string | null | undefined): string {
-    if (!isoString) return '-';
+    if (!isoString) {
+      return '-';
+    }
+
     try {
       const d = new Date(isoString);
+
       return d.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -185,21 +235,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return isoString;
     }
   }
-
-  get activeJobsCount(): number {
-    return this.jobs.filter(
-      job => job.status === 'QUEUED' || job.status === 'PRINTING'
-    ).length;
-  }
-
-  get estimatedFilamentGrams(): number {
-    return this.jobs.reduce(
-      (total, job) => total + (job.estimatedGrams || 0),
-      0
-    );
-  }
-
-
 
   logout(): void {
     this.authService.logout();
@@ -213,13 +248,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   closeTopUpModal(): void {
-    if (this.isToppingUp) return;
+    if (this.isToppingUp) {
+      return;
+    }
+
     this.showTopUpModal = false;
     this.topUpErrorMessage = null;
   }
 
-  selectPresetAmount(amt: number): void {
-    this.topUpAmount = amt;
+  selectPresetAmount(amount: number): void {
+    this.topUpAmount = amount;
     this.topUpErrorMessage = null;
   }
 
@@ -237,7 +275,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   getProjectedBalance(): number {
     const current = this.dashboard?.balance ?? 0;
-    const add = this.isValidTopUpAmount() ? Number(this.topUpAmount) : 0;
+
+    const add = this.isValidTopUpAmount()
+      ? Number(this.topUpAmount)
+      : 0;
+
     return Math.round((current + add) * 100) / 100;
   }
 
@@ -249,45 +291,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     const amount = Number(this.topUpAmount);
+
     this.isToppingUp = true;
     this.topUpErrorMessage = null;
 
-    this.userService.topUpBalance(this.dashboard.uniId, amount).subscribe({
-      next: (res) => {
-        this.isToppingUp = false;
-        const newBalance =
-          res?.balanceAfter !== undefined
-            ? Number(res.balanceAfter)
-            : this.dashboard!.balance + amount;
-        this.dashboard!.balance = newBalance;
-        this.closeTopUpModal();
+    this.userService
+      .topUpBalance(this.dashboard.uniId, amount)
+      .subscribe({
+        next: (res) => {
+          this.isToppingUp = false;
 
-        this.feedbackMessage = {
-          text: `Successfully topped up $${amount.toFixed(2)}! Available balance is now $${newBalance.toFixed(2)}.`,
-          type: 'success',
-        };
+          const newBalance =
+            res?.balanceAfter !== undefined
+              ? Number(res.balanceAfter)
+              : this.dashboard!.balance + amount;
 
-        // Reload user dashboard data to stay in sync
-        this.userService.getDashboard().subscribe({
-          next: (userData) => {
-            this.dashboard = userData;
-          },
-        });
+          this.dashboard!.balance = newBalance;
 
-        setTimeout(() => {
-          if (this.feedbackMessage?.type === 'success') {
-            this.feedbackMessage = null;
-          }
-        }, 6000);
-      },
-      error: (err) => {
-        this.isToppingUp = false;
-        const msg =
-          err.error?.error ||
-          err.error?.errors?.[0] ||
-          'Top-up failed. Please verify your connection and try again.';
-        this.topUpErrorMessage = msg;
-      },
-    });
+          this.closeTopUpModal();
+
+          this.feedbackMessage = {
+            text: `Successfully topped up $${amount.toFixed(
+              2
+            )}! Available balance is now $${newBalance.toFixed(2)}.`,
+            type: 'success',
+          };
+
+          // Reload complete dashboard data to stay in sync.
+          this.userService.getDashboard().subscribe({
+            next: (userData) => {
+              this.dashboard = userData;
+              this.lastUpdated = new Date();
+            },
+          });
+
+          setTimeout(() => {
+            if (this.feedbackMessage?.type === 'success') {
+              this.feedbackMessage = null;
+            }
+          }, 6000);
+        },
+
+        error: (err) => {
+          this.isToppingUp = false;
+
+          const msg =
+            err.error?.error ||
+            err.error?.errors?.[0] ||
+            'Top-up failed. Please verify your connection and try again.';
+
+          this.topUpErrorMessage = msg;
+        },
+      });
   }
 }
