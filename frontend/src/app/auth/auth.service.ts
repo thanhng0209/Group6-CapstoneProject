@@ -13,10 +13,10 @@ export class AuthService {
   private loggedInSubject = new BehaviorSubject<boolean>(this.hasToken());
   loggedIn$ = this.loggedInSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-  login(uniId: string, password: string): Observable<LoginResponse> {
-    const body: LoginRequest = { uniId, password };
+  login(email: string, password: string): Observable<LoginResponse> {
+    const body: LoginRequest = { email, password };
 
     return this.http.post<LoginResponse>(`${API_BASE}/auth/login`, body).pipe(
       tap((response) => {
