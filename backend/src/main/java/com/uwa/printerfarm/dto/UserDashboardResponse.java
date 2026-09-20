@@ -12,27 +12,35 @@ import java.util.List;
 public class UserDashboardResponse {
 
     private String uniId;
+
     private String fullName;
+
     private String email;
+
     private String role;
 
-    // Balance expressed in dollars for the frontend (converted from balanceCents).
+    // Balance expressed in dollars for the frontend.
     private double balance;
 
-    // NOTE: PrintJob doesn't exist yet — that table/entity belongs to the
-    // "File & G-code Validation" / "Job & Financial Management" workstreams.
-    // Until those land, this returns an empty list so the dashboard still renders end-to-end.
+    // Current active print jobs.
     private List<PrintJobSummary> currentJobs;
+
+    // Completed/failed print jobs.
     private List<PrintJobSummary> printHistory;
 
     @Getter
     @Builder
     @AllArgsConstructor
     public static class PrintJobSummary {
+
         private Long jobId;
+
         private String fileName;
+
         private String printerName;
-        private String status; // QUEUED, PRINTING, COMPLETED, FAILED
+
+        private String status;
+
         private String submittedAt;
     }
 }
