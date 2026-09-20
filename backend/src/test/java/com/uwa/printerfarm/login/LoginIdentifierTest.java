@@ -1,4 +1,4 @@
-package com.uwa.printerfarm.util;
+package com.uwa.printerfarm.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

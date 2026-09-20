@@ -1,7 +1,7 @@
 package com.uwa.printerfarm.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.uwa.printerfarm.util.LoginIdentifier;
+import com.uwa.printerfarm.security.LoginIdentifier;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Setter;
 
@@ -10,8 +10,7 @@ public class LoginRequest {
 
     /**
      * What the user typed: a UWA email (student or staff) or an old-style 8-digit UNI ID.
-     * The JSON key can be "email" or "uniId", so the current Angular service keeps working
-     * whichever name it sends.
+     * The JSON key can be "email" or "uniId".
      */
     @NotBlank(message = "UWA email is required")
     @JsonAlias({"email", "uniId"})
@@ -20,13 +19,7 @@ public class LoginRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
-    /**
-     * Returns the cleaned-up login value, not the raw text:
-     *   24717854@student.uwa.edu.au -> 24717854
-     *   Lab.Coordinator@uwa.edu.au  -> lab.coordinator@uwa.edu.au
-     * The name getUniId() is kept so UserService and existing tests need no change.
-     * CustomUserDetailsService looks the value up by uni_id first, then by email.
-     */
+    /** Returns the internal uniId, so existing callers of getUniId() keep working. */
     public String getUniId() {
         return LoginIdentifier.toUniId(uniId);
     }
