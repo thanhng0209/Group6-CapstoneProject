@@ -190,9 +190,26 @@ class MockPrinterDispatcherTest {
 
         assertThat(job.getStatus()).isEqualTo(JobStatus.PRINTING);
         assertThat(printer.getStatus()).isEqualTo("PRINTING");
+        assertThat(job.getProgressPercent()).isEqualTo(50);
+        assertThat(job.getRemainingSeconds()).isEqualTo(30);
 
-        verify(jobRepository, never()).save(job);
+        verify(jobRepository).save(job);
         verify(jobNotificationService, never()).notifyJobFinished(any(Job.class));
+    }
+
+    @Test
+    void pausedJobDoesNotProgressAndResumesWithRemainingTime() {
+        Job job = createQueuedJob(300L, "22345678", "PRUSA_XL_1", "PLA", initialTime);
+        jobLifecycleService.transition(job, JobStatus.PRINTING);
+        job.setStartedAt(initialTime.minusSeconds(30));
+        job.setRemainingSeconds(30);
+
+        dispatcher.pauseJob(job);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.PAUSED);
+
+        dispatcher.resumeJob(job);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.PRINTING);
+        assertThat(job.getPausedAt()).isNull();
     }
 
     @Test

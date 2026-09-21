@@ -1,11 +1,14 @@
 <div class="dashboard-shell" *ngIf="!isLoading && dashboard">
-
   <!-- Sidebar -->
   <aside class="dashboard-sidebar">
-
     <div class="sidebar-brand">
       <div class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
           <line x1="12" y1="22" x2="12" y2="15.5" />
           <polyline points="22 8.5 12 15.5 2 8.5" />
@@ -19,9 +22,12 @@
     </div>
 
     <nav class="sidebar-nav">
-
-      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
-        class="sidebar-link">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="sidebar-link"
+      >
         <span class="nav-icon">▦</span>
         <span>Summary</span>
       </a>
@@ -48,15 +54,17 @@
         <span class="coming-soon">Soon</span>
       </div>
 
-      <a *ngIf="dashboard.role === 'ADMIN'" routerLink="/admin" class="sidebar-link admin-link">
+      <a
+        *ngIf="dashboard.role === 'ADMIN'"
+        routerLink="/admin"
+        class="sidebar-link admin-link"
+      >
         <span class="nav-icon">⚙</span>
         <span>Farm Manager</span>
       </a>
-
     </nav>
 
     <div class="sidebar-bottom">
-
       <div class="sidebar-user">
         <div class="user-avatar">
           {{ dashboard.fullName.charAt(0).toUpperCase() }}
@@ -72,28 +80,20 @@
         <span>↪</span>
         Sign out
       </button>
-
     </div>
-
   </aside>
-
 
   <!-- Main dashboard -->
   <main class="dashboard-main">
-
     <!-- Top header -->
     <header class="dashboard-topbar">
-
       <div>
         <div class="page-label">STUDENT DASHBOARD</div>
 
-        <h1>
-          Welcome, {{ dashboard.fullName }}
-        </h1>
+        <h1>Welcome, {{ dashboard.fullName }}</h1>
       </div>
 
       <div class="topbar-actions">
-
         <span class="role-badge">
           {{ dashboard.role }}
         </span>
@@ -102,50 +102,41 @@
           <span>＋</span>
           Submit New Job
         </a>
-
       </div>
-
     </header>
 
-
     <!-- Feedback -->
-    <div class="feedback-banner" *ngIf="feedbackMessage" [class.success]="feedbackMessage.type === 'success'"
-      [class.error]="feedbackMessage.type === 'error'">
-
+    <div
+      class="feedback-banner"
+      *ngIf="feedbackMessage"
+      [class.success]="feedbackMessage.type === 'success'"
+      [class.error]="feedbackMessage.type === 'error'"
+    >
       <span class="feedback-icon">
-        {{ feedbackMessage.type === 'success' ? '✓' : '⚠' }}
+        {{ feedbackMessage.type === "success" ? "✓" : "⚠" }}
       </span>
 
       <span class="feedback-text">
         {{ feedbackMessage.text }}
       </span>
-
     </div>
-
 
     <!-- Summary cards -->
     <section class="summary-grid">
-
       <article class="summary-card balance-summary">
-
         <div class="summary-card-header">
           <span>AVAILABLE BALANCE</span>
           <span class="summary-icon">$</span>
         </div>
 
-        <strong>
-          ${{ dashboard.balance.toFixed(2) }}
-        </strong>
+        <strong> ${{ dashboard.balance.toFixed(2) }} </strong>
 
         <button type="button" class="summary-action" (click)="openTopUpModal()">
           + Top Up Balance
         </button>
-
       </article>
 
-
       <article class="summary-card">
-
         <div class="summary-card-header">
           <span>ACTIVE JOBS</span>
           <span class="summary-icon">◉</span>
@@ -155,15 +146,10 @@
           {{ activeJobsCount }}
         </strong>
 
-        <span class="summary-description">
-          Queued or currently printing
-        </span>
-
+        <span class="summary-description"> Queued or currently printing </span>
       </article>
 
-
       <article class="summary-card">
-
         <div class="summary-card-header">
           <span>PRINT HISTORY</span>
           <span class="summary-icon">▤</span>
@@ -176,97 +162,86 @@
         <span class="summary-description">
           Completed, failed or cancelled
         </span>
-
       </article>
-
     </section>
-
 
     <!-- Current Print Jobs -->
     <section class="jobs-section">
-
       <div class="section-title-bar">
-
         <div>
           <h2>Your Current Print Jobs</h2>
 
           <div class="live-indicator-wrapper">
             <span class="live-dot"></span>
 
-            <span class="live-text">
-              Real-time tracking active
-            </span>
+            <span class="live-text"> Real-time tracking active </span>
           </div>
         </div>
 
         <div class="refresh-controls">
-
-          <button type="button" class="refresh-btn" [disabled]="isRefreshing" (click)="manualRefresh()">
-
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              [class.spinning]="isRefreshing">
-
+          <button
+            type="button"
+            class="refresh-btn"
+            [disabled]="isRefreshing"
+            (click)="manualRefresh()"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              [class.spinning]="isRefreshing"
+            >
               <polyline points="23 4 23 10 17 10"></polyline>
 
               <polyline points="1 20 1 14 7 14"></polyline>
 
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-
+              <path
+                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+              ></path>
             </svg>
 
-            {{ isRefreshing ? 'Updating...' : 'Refresh' }}
-
+            {{ isRefreshing ? "Updating..." : "Refresh" }}
           </button>
-
         </div>
-
       </div>
-
 
       <!-- Empty current jobs -->
       <div class="empty-state-box" *ngIf="currentJobs.length === 0">
-
         <div class="empty-icon">📂</div>
 
         <h3>No active print jobs</h3>
 
         <p>
-          You currently have no queued or printing jobs.
-          Submit a G-code file to start a new print.
+          You currently have no queued or printing jobs. Submit a G-code file to
+          start a new print.
         </p>
 
         <a routerLink="/submit" class="submit-nav-btn empty-action">
           Submit a Print Job
         </a>
-
       </div>
-
 
       <!-- Current jobs table -->
       <div class="table-responsive" *ngIf="currentJobs.length > 0">
-
         <table class="jobs-table">
-
           <thead>
-
             <tr>
               <th>Job ID</th>
               <th>File Name</th>
               <th>Printer</th>
               <th>Submitted</th>
+              <th>Progress</th>
               <th>Status</th>
               <th class="text-right">Action</th>
             </tr>
-
           </thead>
 
           <tbody>
-
             <tr *ngFor="let job of currentJobs">
-
-              <td class="font-mono">
-                #{{ job.jobId }}
-              </td>
+              <td class="font-mono">#{{ job.jobId }}</td>
 
               <td class="col-filename font-mono" [title]="job.fileName">
                 {{ job.fileName }}
@@ -282,89 +257,104 @@
                 {{ formatDate(job.submittedAt) }}
               </td>
 
+              <td class="progress-cell">
+                <div class="progress-track">
+                  <div
+                    class="progress-fill"
+                    [style.width.%]="job.progressPercent || 0"
+                  ></div>
+                </div>
+                <span
+                  >{{ job.progressPercent || 0 }}%<span
+                    *ngIf="job.status === 'PRINTING' || job.status === 'PAUSED'"
+                  >
+                    · {{ job.remainingSeconds || 0 }}s</span
+                  ></span
+                >
+              </td>
+
               <td>
-
-                <span class="status-badge" [ngClass]="'status-' + job.status.toLowerCase()">
-
-                  <span class="badge-dot" *ngIf="job.status === 'QUEUED' || job.status === 'PRINTING'"></span>
+                <span
+                  class="status-badge"
+                  [ngClass]="'status-' + job.status.toLowerCase()"
+                >
+                  <span
+                    class="badge-dot"
+                    *ngIf="job.status === 'QUEUED' || job.status === 'PRINTING'"
+                  ></span>
 
                   {{ job.status }}
-
                 </span>
-
               </td>
 
               <td class="text-right">
+                <button
+                  *ngIf="isEligibleForPause(job)"
+                  type="button"
+                  class="cancel-btn"
+                  [disabled]="controllingJobId === job.jobId"
+                  (click)="pauseJob(job)"
+                >
+                  {{ controllingJobId === job.jobId ? "..." : "Pause" }}
+                </button>
 
-                <button *ngIf="isEligibleForCancel(job)" type="button" class="cancel-btn"
-                  [disabled]="cancellingJobId === job.jobId" (click)="cancelJob(job)">
+                <button
+                  *ngIf="isEligibleForResume(job)"
+                  type="button"
+                  class="cancel-btn"
+                  [disabled]="controllingJobId === job.jobId"
+                  (click)="resumeJob(job)"
+                >
+                  {{ controllingJobId === job.jobId ? "..." : "Resume" }}
+                </button>
 
-                  <span *ngIf="cancellingJobId !== job.jobId">
-                    Cancel
-                  </span>
+                <button
+                  *ngIf="isEligibleForCancel(job)"
+                  type="button"
+                  class="cancel-btn"
+                  [disabled]="cancellingJobId === job.jobId"
+                  (click)="cancelJob(job)"
+                >
+                  <span *ngIf="cancellingJobId !== job.jobId"> Cancel </span>
 
-                  <span *ngIf="cancellingJobId === job.jobId">
-                    ...
-                  </span>
-
+                  <span *ngIf="cancellingJobId === job.jobId"> ... </span>
                 </button>
 
                 <span *ngIf="!isEligibleForCancel(job)" class="ineligible-text">
                   —
                 </span>
-
               </td>
-
             </tr>
-
           </tbody>
-
         </table>
-
       </div>
-
     </section>
-
 
     <!-- Print History -->
     <section class="jobs-section">
-
       <div class="section-title-bar">
-
         <div>
           <h2>Print History</h2>
 
           <div class="live-indicator-wrapper">
-            <span class="live-text">
-              Your previous print jobs
-            </span>
+            <span class="live-text"> Your previous print jobs </span>
           </div>
         </div>
-
       </div>
-
 
       <!-- Empty history -->
       <div class="empty-state-box" *ngIf="printHistory.length === 0">
-
         <div class="empty-icon">🗂</div>
 
         <h3>No print history yet</h3>
 
-        <p>
-          Completed, failed and cancelled print jobs will appear here.
-        </p>
-
+        <p>Completed, failed and cancelled print jobs will appear here.</p>
       </div>
-
 
       <!-- History table -->
       <div class="table-responsive" *ngIf="printHistory.length > 0">
-
         <table class="jobs-table">
-
           <thead>
-
             <tr>
               <th>Job ID</th>
               <th>File Name</th>
@@ -372,16 +362,11 @@
               <th>Submitted</th>
               <th>Status</th>
             </tr>
-
           </thead>
 
           <tbody>
-
             <tr *ngFor="let job of printHistory">
-
-              <td class="font-mono">
-                #{{ job.jobId }}
-              </td>
+              <td class="font-mono">#{{ job.jobId }}</td>
 
               <td class="col-filename font-mono" [title]="job.fileName">
                 {{ job.fileName }}
@@ -398,83 +383,72 @@
               </td>
 
               <td>
-
-                <span class="status-badge" [ngClass]="'status-' + job.status.toLowerCase()">
-
+                <span
+                  class="status-badge"
+                  [ngClass]="'status-' + job.status.toLowerCase()"
+                >
                   {{ job.status }}
-
                 </span>
-
               </td>
-
             </tr>
-
           </tbody>
-
         </table>
-
       </div>
-
     </section>
-
   </main>
 
-
   <!-- Top-Up Modal -->
-  <div class="modal-backdrop" *ngIf="showTopUpModal" (click)="closeTopUpModal()">
-
+  <div
+    class="modal-backdrop"
+    *ngIf="showTopUpModal"
+    (click)="closeTopUpModal()"
+  >
     <div class="modal-card" (click)="$event.stopPropagation()">
-
       <div class="modal-header">
-
         <div class="modal-title-wrap">
           <span class="modal-icon">💳</span>
           <h3>Top Up Student Balance</h3>
         </div>
 
-        <button type="button" class="modal-close-btn" (click)="closeTopUpModal()" title="Close">
+        <button
+          type="button"
+          class="modal-close-btn"
+          (click)="closeTopUpModal()"
+          title="Close"
+        >
           ✕
         </button>
-
       </div>
 
-
       <div class="modal-body">
-
         <p class="modal-intro">
-          Add funds to your 3D print wallet.
-          Balance is available immediately for submitting print jobs.
+          Add funds to your 3D print wallet. Balance is available immediately
+          for submitting print jobs.
         </p>
-
 
         <!-- Current Balance -->
         <div class="topup-current-box">
-
-          <span class="label">
-            Current Available Balance:
-          </span>
+          <span class="label"> Current Available Balance: </span>
 
           <span class="val font-mono font-semibold">
             ${{ (dashboard.balance || 0).toFixed(2) }}
           </span>
-
         </div>
-
 
         <!-- Preset Amounts -->
-        <label class="topup-field-label">
-          Select Preset Amount:
-        </label>
+        <label class="topup-field-label"> Select Preset Amount: </label>
 
         <div class="preset-chips">
-
-          <button type="button" *ngFor="let preset of presetAmounts" class="chip-btn"
-            [class.active]="topUpAmount === preset" (click)="selectPresetAmount(preset)">
+          <button
+            type="button"
+            *ngFor="let preset of presetAmounts"
+            class="chip-btn"
+            [class.active]="topUpAmount === preset"
+            (click)="selectPresetAmount(preset)"
+          >
             +${{ preset }}
           </button>
-
         </div>
-
 
         <!-- Custom Amount -->
         <label class="topup-field-label" for="customAmount">
@@ -482,88 +456,74 @@
         </label>
 
         <div class="custom-amount-wrap">
+          <span class="currency-prefix"> $ </span>
 
-          <span class="currency-prefix">
-            $
-          </span>
-
-          <input id="customAmount" type="number" min="0.01" step="1" placeholder="0.00" [(ngModel)]="topUpAmount"
-            (input)="onCustomAmountChange()" />
-
+          <input
+            id="customAmount"
+            type="number"
+            min="0.01"
+            step="1"
+            placeholder="0.00"
+            [(ngModel)]="topUpAmount"
+            (input)="onCustomAmountChange()"
+          />
         </div>
-
 
         <!-- Projected Balance -->
         <div class="projected-balance-box" *ngIf="isValidTopUpAmount()">
-
           <div class="proj-row">
-
-            <span class="proj-label">
-              Projected Balance After Top-up:
-            </span>
+            <span class="proj-label"> Projected Balance After Top-up: </span>
 
             <strong class="proj-val">
               ${{ getProjectedBalance().toFixed(2) }}
             </strong>
-
           </div>
-
         </div>
-
 
         <!-- Error -->
         <div class="topup-error" *ngIf="topUpErrorMessage">
           ⚠️ {{ topUpErrorMessage }}
         </div>
-
       </div>
 
-
       <div class="modal-footer">
-
-        <button type="button" class="secondary-btn" [disabled]="isToppingUp" (click)="closeTopUpModal()">
+        <button
+          type="button"
+          class="secondary-btn"
+          [disabled]="isToppingUp"
+          (click)="closeTopUpModal()"
+        >
           Cancel
         </button>
 
-        <button type="button" class="confirm-topup-btn" [disabled]="!isValidTopUpAmount() || isToppingUp"
-          (click)="confirmTopUp()">
-
+        <button
+          type="button"
+          class="confirm-topup-btn"
+          [disabled]="!isValidTopUpAmount() || isToppingUp"
+          (click)="confirmTopUp()"
+        >
           <span *ngIf="!isToppingUp">
             Confirm Top-Up (+${{ (topUpAmount || 0).toFixed(2) }})
           </span>
 
-          <span *ngIf="isToppingUp">
-            Processing...
-          </span>
+          <span *ngIf="isToppingUp"> Processing... </span>
 
           <span class="spinner" *ngIf="isToppingUp"></span>
-
         </button>
-
       </div>
-
     </div>
-
   </div>
-
 </div>
-
 
 <!-- Loading state -->
 <div class="state-container loading" *ngIf="isLoading">
-
   <div class="main-spinner"></div>
 
-  <p>
-    Loading your student print dashboard...
-  </p>
-
+  <p>Loading your student print dashboard...</p>
 </div>
-
 
 <!-- Error state -->
 <div class="state-container error" *ngIf="errorMessage && !isLoading">
-
   <p>
     {{ errorMessage }}
   </p>
@@ -571,5 +531,4 @@
   <button type="button" class="retry-btn" (click)="loadInitialData()">
     Retry
   </button>
-
 </div>

@@ -74,11 +74,6 @@ public class RefundService {
                 "Refund for cancelled job " + jobId);
     }
 
-    private RefundRequest requireRequest(long requestId) {
-        return refundRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RefundRequestNotFoundException(requestId));
-    }
-
     private RefundRequest requireRequestForDecision(long requestId) {
         return refundRequestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new RefundRequestNotFoundException(requestId));
