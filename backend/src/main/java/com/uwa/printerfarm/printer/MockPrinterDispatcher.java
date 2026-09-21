@@ -219,9 +219,13 @@ public class MockPrinterDispatcher {
     public com.uwa.printerfarm.job.RefundDecision cancelJob(Job job) {
         com.uwa.printerfarm.job.RefundDecision decision = jobLifecycleService.cancel(job, clock.instant());
         jobRepository.save(job);
+        releasePrinterAfterCancellation(job);
+        return decision;
+    }
+
+    public void releasePrinterAfterCancellation(Job job) {
         printingStartedAt.remove(job.getId());
         releasePrinter(job);
-        return decision;
     }
 
     private void releasePrinter(Job job) {
