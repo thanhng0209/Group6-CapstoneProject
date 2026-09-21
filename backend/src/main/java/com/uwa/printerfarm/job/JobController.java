@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST controller exposing endpoints for student 3D print job submissions,
@@ -37,18 +38,21 @@ public class JobController {
     private final JobRepository jobRepository;
     private final PrinterRepository printerRepository;
     private final MockPrinterDispatcher mockPrinterDispatcher;
+    private final RefundService refundService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository,
             PrinterRepository printerRepository,
-            ObjectProvider<MockPrinterDispatcher> mockPrinterDispatcherProvider) {
+            ObjectProvider<MockPrinterDispatcher> mockPrinterDispatcherProvider,
+            RefundService refundService) {
         this.jobSubmissionService = jobSubmissionService;
         this.jobLifecycleService = jobLifecycleService;
         this.jobRepository = jobRepository;
         this.printerRepository = printerRepository;
         this.mockPrinterDispatcher = mockPrinterDispatcherProvider.getIfAvailable();
+        this.refundService = refundService;
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
@@ -60,12 +64,13 @@ public class JobController {
         this.jobRepository = jobRepository;
         this.printerRepository = printerRepository;
         this.mockPrinterDispatcher = null;
+        this.refundService = null;
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository) {
-        this(jobSubmissionService, jobLifecycleService, jobRepository, null, null);
+        this(jobSubmissionService, jobLifecycleService, jobRepository, null, null, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
@@ -172,10 +177,22 @@ public class JobController {
             }
         }
 
-        RefundDecision decision = mockPrinterDispatcher != null && job.getStatus() != JobStatus.QUEUED
-            ? mockPrinterDispatcher.cancelJob(job)
-            : jobLifecycleService.cancel(job, Instant.now());
+        JobStatus statusBeforeCancellation = job.getStatus();
+        Optional<RefundRequest> refundRequest = refundService != null
+                ? refundService.cancelAndRefund(job, Instant.now())
+                : Optional.empty();
+
+        if (refundService == null) {
+            jobLifecycleService.cancel(job, Instant.now());
+        }
+        if (mockPrinterDispatcher != null && statusBeforeCancellation != JobStatus.QUEUED) {
+            mockPrinterDispatcher.releasePrinterAfterCancellation(job);
+        }
         jobRepository.save(job);
+
+        RefundDecision decision = refundRequest.isEmpty()
+                ? RefundDecision.AUTO_REFUNDED
+                : RefundDecision.REQUIRES_APPROVAL;
 
         return ResponseEntity.ok(Map.of(
                 "jobId", job.getId(),
