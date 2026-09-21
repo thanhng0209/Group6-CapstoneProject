@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -159,5 +161,43 @@ class AdminMonitoringControllerTest {
         mockMvc.perform(post("/api/admin/refunds/1/reject").with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REFUND_STATE"));
+    }
+
+    @Test
+    void usageTrendsEndpointDefaultsToThirtyDays() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        UsageTrendPoint point = new UsageTrendPoint(today, new BigDecimal("100"),
+                new BigDecimal("6.20"), BigDecimal.ZERO, 1L);
+        when(monitoringService.usageTrends(30)).thenReturn(List.of(point));
+
+        mockMvc.perform(get("/api/admin/usage-trends"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].date").value(today.toString()))
+                .andExpect(jsonPath("$[0].filamentGrams").value(100))
+                .andExpect(jsonPath("$[0].charged").value(6.20))
+                .andExpect(jsonPath("$[0].jobCount").value(1));
+
+        verify(monitoringService).usageTrends(30);
+    }
+
+    @Test
+    void usageTrendsEndpointHonoursDaysQueryParam() throws Exception {
+        when(monitoringService.usageTrends(7)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/admin/usage-trends").param("days", "7"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+
+        verify(monitoringService).usageTrends(7);
+    }
+
+    @Test
+    void usageTrendsEndpointReturnsBadRequestForNonPositiveDays() throws Exception {
+        when(monitoringService.usageTrends(0))
+                .thenThrow(new IllegalArgumentException("days must be positive"));
+
+        mockMvc.perform(get("/api/admin/usage-trends").param("days", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_USAGE_TRENDS_REQUEST"));
     }
 }
