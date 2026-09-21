@@ -16,6 +16,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +53,9 @@ class JobControllerTest {
 
         @MockBean
         private MockPrinterDispatcher mockPrinterDispatcher;
+
+        @MockBean
+        private RefundService refundService;
 
     @MockBean
     private JwtUtil jwtUtil;
@@ -170,9 +174,9 @@ class JobControllerTest {
     @Test
     void cancelJobWithinWindowAutoRefunds() throws Exception {
         when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
-        when(jobLifecycleService.cancel(eq(sampleJob), any())).thenAnswer(invocation -> {
+                when(refundService.cancelAndRefund(eq(sampleJob), any())).thenAnswer(invocation -> {
             sampleJob.setStatus(JobStatus.CANCELLED);
-            return RefundDecision.AUTO_REFUNDED;
+                        return Optional.empty();
         });
         when(jobRepository.save(sampleJob)).thenReturn(sampleJob);
 
@@ -182,16 +186,17 @@ class JobControllerTest {
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.refundDecision").value("AUTO_REFUNDED"));
 
-        verify(jobLifecycleService).cancel(eq(sampleJob), any());
+        verify(refundService).cancelAndRefund(eq(sampleJob), any());
         verify(jobRepository).save(sampleJob);
     }
 
     @Test
     void cancelJobOutsideWindowRequiresApproval() throws Exception {
         when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
-        when(jobLifecycleService.cancel(eq(sampleJob), any())).thenAnswer(invocation -> {
+                when(refundService.cancelAndRefund(eq(sampleJob), any())).thenAnswer(invocation -> {
             sampleJob.setStatus(JobStatus.CANCELLED);
-            return RefundDecision.REQUIRES_APPROVAL;
+                        return Optional.of(new RefundRequest(
+                                        1L, sampleJob.getId(), sampleJob.getOwnerUniId(), sampleJob.getCost(), Instant.now()));
         });
         when(jobRepository.save(sampleJob)).thenReturn(sampleJob);
 
@@ -201,7 +206,7 @@ class JobControllerTest {
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.refundDecision").value("REQUIRES_APPROVAL"));
 
-        verify(jobLifecycleService).cancel(eq(sampleJob), any());
+        verify(refundService).cancelAndRefund(eq(sampleJob), any());
         verify(jobRepository).save(sampleJob);
     }
 
