@@ -2,6 +2,7 @@ package com.uwa.printerfarm.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uwa.printerfarm.printer.PrinterRepository;
+import com.uwa.printerfarm.printer.MockPrinterDispatcher;
 import com.uwa.printerfarm.security.JwtUtil;
 import com.uwa.printerfarm.service.CustomUserDetailsService;
 import com.uwa.printerfarm.wallet.InsufficientBalanceException;
@@ -48,6 +49,9 @@ class JobControllerTest {
 
     @MockBean
     private PrinterRepository printerRepository;
+
+        @MockBean
+        private MockPrinterDispatcher mockPrinterDispatcher;
 
     @MockBean
     private JwtUtil jwtUtil;
