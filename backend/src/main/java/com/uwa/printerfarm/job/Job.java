@@ -28,6 +28,8 @@ public class Job {
 
     @Column(name = "file_name")
     private String fileName;
+    @Column(nullable = false, length = 30)
+    private String colour = "Unknown";
 
     @Column(nullable = false, length = 30)
     private String material;
@@ -68,6 +70,7 @@ public class Job {
         this.material = material;
         this.estimatedGrams = estimatedGrams != null ? estimatedGrams : BigDecimal.ZERO;
         this.estimatedMinutes = estimatedMinutes != null ? estimatedMinutes : BigDecimal.ZERO;
+        this.colour = "Unknown";
     }
 
     public Long getId() {
@@ -96,6 +99,14 @@ public class Job {
 
     public String getMaterial() {
         return material;
+    }
+
+    public String getColour() {
+        return colour;
+    }
+
+    public void setColour(String colour) {
+        this.colour = colour != null && !colour.isBlank() ? colour : "Unknown";
     }
 
     public BigDecimal getEstimatedGrams() {
@@ -132,6 +143,61 @@ public class Job {
 
     void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    @Column(name = "started_at")
+    private Instant startedAt;
+
+    @Column(name = "paused_at")
+    private Instant pausedAt;
+
+    @Column(name = "paused_duration_seconds", nullable = false)
+    private long pausedDurationSeconds;
+
+    @Column(name = "progress_percent", nullable = false)
+    private int progressPercent;
+
+    @Column(name = "remaining_seconds", nullable = false)
+    private long remainingSeconds;
+
+    public Instant getStartedAt() {
+        return startedAt;
+    }
+
+    public void setStartedAt(Instant startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    public Instant getPausedAt() {
+        return pausedAt;
+    }
+
+    public void setPausedAt(Instant pausedAt) {
+        this.pausedAt = pausedAt;
+    }
+
+    public long getPausedDurationSeconds() {
+        return pausedDurationSeconds;
+    }
+
+    public void setPausedDurationSeconds(long pausedDurationSeconds) {
+        this.pausedDurationSeconds = Math.max(0, pausedDurationSeconds);
+    }
+
+    public int getProgressPercent() {
+        return progressPercent;
+    }
+
+    public void setProgressPercent(int progressPercent) {
+        this.progressPercent = Math.max(0, Math.min(100, progressPercent));
+    }
+
+    public long getRemainingSeconds() {
+        return remainingSeconds;
+    }
+
+    public void setRemainingSeconds(long remainingSeconds) {
+        this.remainingSeconds = Math.max(0, remainingSeconds);
     }
 
     public void assignId(long id) {
