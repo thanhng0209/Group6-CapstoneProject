@@ -97,7 +97,8 @@ public class MockPrinterDispatcher {
 
         for (Job job : printingJobs) {
             Instant started = printingStartedAt.computeIfAbsent(job.getId(), id -> resolveStartTime(job));
-            if (Duration.between(started, now).compareTo(printDuration) >= 0) {
+            updateTelemetry(job, started, now);
+            if (job.getRemainingSeconds() <= 0) {
                 completeJob(job);
             }
         }
@@ -140,6 +141,8 @@ public class MockPrinterDispatcher {
     public void completeJob(Job job) {
         log.info("Completing job #{} on printer {}", job.getId(), job.getPrinterId());
         jobLifecycleService.transition(job, JobStatus.COMPLETED);
+        job.setProgressPercent(100);
+        job.setRemainingSeconds(0);
         jobRepository.save(job);
         printingStartedAt.remove(job.getId());
 
@@ -176,12 +179,73 @@ public class MockPrinterDispatcher {
         log.info("Assigning queued job #{} to printer {} ({})", job.getId(), printer.getId(), printer.getModel());
         job.setPrinterId(printer.getId());
         jobLifecycleService.transition(job, JobStatus.PRINTING);
+        job.setStartedAt(clock.instant());
+        job.setPausedAt(null);
+        job.setPausedDurationSeconds(0);
+        job.setProgressPercent(0);
+        job.setRemainingSeconds(printDuration.toSeconds());
         jobRepository.save(job);
 
         printer.setStatus("PRINTING");
         printerRepository.save(printer);
 
         printingStartedAt.put(job.getId(), clock.instant());
+    }
+
+    public Job pauseJob(Job job) {
+        if (job.getStatus() != JobStatus.PRINTING) {
+            throw new IllegalStateException("Only printing jobs can be paused");
+        }
+        jobLifecycleService.transition(job, JobStatus.PAUSED);
+        job.setPausedAt(clock.instant());
+        jobRepository.save(job);
+        return job;
+    }
+
+    public Job resumeJob(Job job) {
+        if (job.getStatus() != JobStatus.PAUSED) {
+            throw new IllegalStateException("Only paused jobs can be resumed");
+        }
+        if (job.getPausedAt() != null) {
+            long pausedSeconds = Duration.between(job.getPausedAt(), clock.instant()).getSeconds();
+            job.setPausedDurationSeconds(job.getPausedDurationSeconds() + Math.max(0, pausedSeconds));
+        }
+        job.setPausedAt(null);
+        jobLifecycleService.transition(job, JobStatus.PRINTING);
+        jobRepository.save(job);
+        return job;
+    }
+
+    public com.uwa.printerfarm.job.RefundDecision cancelJob(Job job) {
+        com.uwa.printerfarm.job.RefundDecision decision = jobLifecycleService.cancel(job, clock.instant());
+        jobRepository.save(job);
+        printingStartedAt.remove(job.getId());
+        releasePrinter(job);
+        return decision;
+    }
+
+    private void releasePrinter(Job job) {
+        if (job.getPrinterId() == null) {
+            return;
+        }
+        printerRepository.findById(job.getPrinterId()).ifPresent(printer -> {
+            if ("PRINTING".equals(printer.getStatus())) {
+                printer.setStatus("IDLE");
+                printerRepository.save(printer);
+            }
+        });
+    }
+
+    private void updateTelemetry(Job job, Instant started, Instant now) {
+        long elapsedSeconds = Math.max(0, Duration.between(started, now).getSeconds()
+                - job.getPausedDurationSeconds());
+        long totalSeconds = Math.max(1, printDuration.toSeconds());
+        long remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+        int progressPercent = (int) Math.min(100, (elapsedSeconds * 100) / totalSeconds);
+
+        job.setProgressPercent(progressPercent);
+        job.setRemainingSeconds(remainingSeconds);
+        jobRepository.save(job);
     }
 
     /**
@@ -250,6 +314,9 @@ public class MockPrinterDispatcher {
     }
 
     private Instant resolveStartTime(Job job) {
+        if (job.getStartedAt() != null) {
+            return job.getStartedAt();
+        }
         if (job.getPrinterId() != null) {
             Optional<Printer> printerOpt = printerRepository.findById(job.getPrinterId());
             if (printerOpt.isPresent() && printerOpt.get().getUpdatedAt() != null) {
