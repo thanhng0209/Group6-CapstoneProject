@@ -239,7 +239,7 @@ class JobControllerTest {
     @Test
     void cancelPrintingJobThrowsInvalidJobStatusTransitionException() throws Exception {
         when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
-        when(jobLifecycleService.cancel(eq(sampleJob), any()))
+        when(refundService.cancelAndRefund(eq(sampleJob), any()))
                 .thenThrow(new InvalidJobStatusTransitionException(JobStatus.PRINTING, JobStatus.CANCELLED));
 
         mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
