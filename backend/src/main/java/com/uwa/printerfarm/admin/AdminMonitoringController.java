@@ -58,6 +58,11 @@ public class AdminMonitoringController {
         return monitoringService.pendingRefundRequests();
     }
 
+    @GetMapping("/api/admin/usage-trends")
+    public List<UsageTrendPoint> usageTrends(@RequestParam(defaultValue = "30") int days) {
+        return monitoringService.usageTrends(days);
+    }
+
     @PostMapping("/api/admin/refunds/{id}/approve")
     public ResponseEntity<?> approveRefund(@PathVariable Long id) {
         if (refundService == null) {
@@ -92,5 +97,12 @@ public class AdminMonitoringController {
         return ResponseEntity.badRequest().body(Map.of(
                 "errors", List.of(ex.getMessage()),
                 "code", "INVALID_REFUND_STATE"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "errors", List.of(ex.getMessage()),
+                "code", "INVALID_USAGE_TRENDS_REQUEST"));
     }
 }
