@@ -75,11 +75,25 @@ class JobLifecycleServiceTest {
     }
 
     @Test
-    void cannotCancelAJobThatIsAlreadyPrinting() {
+    void canPauseAndResumeAPrintingJob() {
         Job job = newQueuedJob();
         lifecycleService.transition(job, JobStatus.PRINTING);
 
-        assertThatThrownBy(() -> lifecycleService.cancel(job, Instant.now()))
-                .isInstanceOf(InvalidJobStatusTransitionException.class);
+        lifecycleService.transition(job, JobStatus.PAUSED);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.PAUSED);
+
+        lifecycleService.transition(job, JobStatus.PRINTING);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.PRINTING);
+    }
+
+    @Test
+    void cancellingAPrintingJobRequiresApproval() {
+        Job job = newQueuedJob();
+        lifecycleService.transition(job, JobStatus.PRINTING);
+
+        RefundDecision decision = lifecycleService.cancel(job, Instant.now());
+
+        assertThat(job.getStatus()).isEqualTo(JobStatus.CANCELLED);
+        assertThat(decision).isEqualTo(RefundDecision.REQUIRES_APPROVAL);
     }
 }

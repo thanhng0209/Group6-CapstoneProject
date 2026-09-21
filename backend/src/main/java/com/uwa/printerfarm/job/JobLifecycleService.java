@@ -21,7 +21,8 @@ public class JobLifecycleService {
 
     static {
         ALLOWED_TRANSITIONS.put(JobStatus.QUEUED, EnumSet.of(JobStatus.PRINTING, JobStatus.CANCELLED));
-        ALLOWED_TRANSITIONS.put(JobStatus.PRINTING, EnumSet.of(JobStatus.COMPLETED, JobStatus.FAILED));
+        ALLOWED_TRANSITIONS.put(JobStatus.PRINTING, EnumSet.of(JobStatus.PAUSED, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED));
+        ALLOWED_TRANSITIONS.put(JobStatus.PAUSED, EnumSet.of(JobStatus.PRINTING, JobStatus.CANCELLED));
         ALLOWED_TRANSITIONS.put(JobStatus.COMPLETED, EnumSet.noneOf(JobStatus.class));
         ALLOWED_TRANSITIONS.put(JobStatus.FAILED, EnumSet.noneOf(JobStatus.class));
         ALLOWED_TRANSITIONS.put(JobStatus.CANCELLED, EnumSet.noneOf(JobStatus.class));
@@ -52,7 +53,11 @@ public class JobLifecycleService {
      * secondary approval, based on how long the job has been queued.
      */
     public RefundDecision cancel(Job job, Instant now) {
+        JobStatus statusBeforeCancellation = job.getStatus();
         transition(job, JobStatus.CANCELLED);
+        if (statusBeforeCancellation != JobStatus.QUEUED) {
+            return RefundDecision.REQUIRES_APPROVAL;
+        }
 
         Duration waited = Duration.between(job.getQueuedAt(), now);
         return waited.compareTo(cancellationWindow) <= 0
