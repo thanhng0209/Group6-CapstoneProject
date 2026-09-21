@@ -3,6 +3,7 @@ package com.uwa.printerfarm.service;
 import com.uwa.printerfarm.dto.LoginRequest;
 import com.uwa.printerfarm.dto.LoginResponse;
 import com.uwa.printerfarm.enums.Role;
+import com.uwa.printerfarm.job.JobRepository;
 import com.uwa.printerfarm.model.User;
 import com.uwa.printerfarm.repository.UserRepository;
 import com.uwa.printerfarm.security.JwtUtil;
@@ -30,6 +31,9 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private JobRepository jobRepository;
+
+    @Mock
     private JwtUtil jwtUtil;
 
     @Mock
@@ -39,7 +43,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(authenticationManager, userRepository, jwtUtil);
+        userService = new UserService(authenticationManager, userRepository, jobRepository, jwtUtil);
     }
 
     @Test
