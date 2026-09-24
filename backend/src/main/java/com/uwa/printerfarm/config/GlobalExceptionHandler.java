@@ -1,6 +1,7 @@
 package com.uwa.printerfarm.config;
 
 import com.uwa.printerfarm.gcode.GcodeParseException;
+import com.uwa.printerfarm.wallet.InvalidWalletAmountException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,6 +43,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleGcodeParse(GcodeParseException ex) {
         return ResponseEntity.badRequest()
                 .body(error(List.of(ex.getMessage()), "GCODE_PARSE_ERROR"));
+    }
+
+    /**
+     * Handles a wallet debit/credit requested with a non-positive amount
+     * (see {@link InvalidWalletAmountException}).
+     */
+    @ExceptionHandler(InvalidWalletAmountException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidWalletAmount(InvalidWalletAmountException ex) {
+        return ResponseEntity.badRequest()
+                .body(error(List.of(ex.getMessage()), "INVALID_WALLET_AMOUNT"));
     }
 
     /**
