@@ -148,5 +148,20 @@ void getDashboardReturnsUserProfileAndBalance() {
     verify(jobRepository).findByOwnerUniIdOrderByQueuedAtDesc("12345678");
 }
 
+@Test
+void getDashboardThrowsExceptionWhenUserDoesNotExist() {
+    when(userRepository.findByUniId("99999999"))
+            .thenReturn(Optional.empty());
+
+    IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> userService.getDashboard("99999999")
+    );
+
+    assertEquals("User not found: 99999999", exception.getMessage());
+
+    verify(userRepository).findByUniId("99999999");
+    verifyNoInteractions(jobRepository);
+}
 
 }
