@@ -18,6 +18,10 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
+import com.uwa.printerfarm.dto.UserDashboardResponse;
+import java.util.Collections;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -105,4 +109,44 @@ class UserServiceTest {
 
         verify(jwtUtil, never()).generateToken(any(UserPrincipal.class));
     }
+
+
+    @Test
+void getDashboardReturnsUserProfileAndBalance() {
+    User user = User.builder()
+            .id(1L)
+            .uniId("12345678")
+            .email("student@example.com")
+            .passwordHash("encoded-password")
+            .fullName("Test Student")
+            .role(Role.STUDENT)
+            .balanceCents(2500L)
+            .build();
+
+    when(userRepository.findByUniId("12345678"))
+            .thenReturn(Optional.of(user));
+
+    when(jobRepository.findByOwnerUniIdOrderByQueuedAtDesc("12345678"))
+            .thenReturn(Collections.emptyList());
+
+    UserDashboardResponse response = userService.getDashboard("12345678");
+
+    assertNotNull(response);
+    assertEquals("12345678", response.getUniId());
+    assertEquals("Test Student", response.getFullName());
+    assertEquals("student@example.com", response.getEmail());
+    assertEquals("STUDENT", response.getRole());
+    assertEquals(25.0, response.getBalance());
+
+    assertNotNull(response.getCurrentJobs());
+    assertTrue(response.getCurrentJobs().isEmpty());
+
+    assertNotNull(response.getPrintHistory());
+    assertTrue(response.getPrintHistory().isEmpty());
+
+    verify(userRepository).findByUniId("12345678");
+    verify(jobRepository).findByOwnerUniIdOrderByQueuedAtDesc("12345678");
+}
+
+
 }
