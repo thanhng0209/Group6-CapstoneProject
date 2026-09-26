@@ -90,6 +90,32 @@ class WalletServiceTest {
     }
 
     @Test
+    void creditWithoutLedgerIncreasesBalanceWithoutRecordingLedgerTransaction() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
+        BigDecimal balanceAfter = walletService.creditWithoutLedger("22345678", new BigDecimal("10.00"));
+
+        assertThat(balanceAfter).isEqualByComparingTo("60.00");
+        assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
+        verify(userRepository).save(testUser);
+        org.mockito.Mockito.verifyNoInteractions(ledgerService);
+    }
+
+    @Test
+    void creditWithCustomTransactionDetailsRecordsSuppliedTypeAndJobId() {
+        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+
+        BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"),
+                TransactionType.REFUND, 42L, "Custom refund transaction");
+
+        assertThat(balanceAfter).isEqualByComparingTo("60.00");
+        assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
+        verify(userRepository).save(testUser);
+        verify(ledgerService).record(eq("22345678"), eq(42L), eq(TransactionType.REFUND),
+                eq(new BigDecimal("10.00")), eq(new BigDecimal("60.00")), eq("Custom refund transaction"));
+    }
+
+    @Test
     void debitBeyondBalanceThrowsAndLeavesBalanceUnchanged() {
         when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
 

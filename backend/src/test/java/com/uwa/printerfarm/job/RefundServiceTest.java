@@ -1,5 +1,7 @@
 package com.uwa.printerfarm.job;
 
+import com.uwa.printerfarm.model.User;
+import com.uwa.printerfarm.repository.UserRepository;
 import com.uwa.printerfarm.wallet.TransactionLedgerService;
 import com.uwa.printerfarm.wallet.TransactionType;
 import com.uwa.printerfarm.wallet.WalletService;
@@ -7,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -21,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +64,7 @@ class RefundServiceTest {
 
         assertThat(pending).isEmpty();
         assertThat(job.getStatus()).isEqualTo(JobStatus.CANCELLED);
-        verify(walletService).credit("22345678", new BigDecimal("6.20"));
+        verify(walletService).creditWithoutLedger("22345678", new BigDecimal("6.20"));
         verify(ledgerService).record(eq("22345678"), eq(job.getId()), eq(TransactionType.REFUND),
                 eq(new BigDecimal("6.20")), any(), any());
     }
@@ -75,6 +79,7 @@ class RefundServiceTest {
         assertThat(pending).isPresent();
         assertThat(pending.get().getStatus()).isEqualTo(RefundStatus.PENDING_APPROVAL);
         verify(refundRequestRepository).save(any(RefundRequest.class));
+        verify(walletService, never()).creditWithoutLedger(any(), any());
         verify(walletService, never()).credit(any(), any());
     }
 
@@ -88,7 +93,7 @@ class RefundServiceTest {
 
         assertThat(approved.getStatus()).isEqualTo(RefundStatus.APPROVED);
         verify(refundRequestRepository).save(request);
-        verify(walletService).credit("22345678", new BigDecimal("6.20"));
+        verify(walletService).creditWithoutLedger("22345678", new BigDecimal("6.20"));
         verify(ledgerService).record(eq("22345678"), eq(job.getId()), eq(TransactionType.REFUND),
                 eq(new BigDecimal("6.20")), any(), any());
     }
@@ -103,7 +108,32 @@ class RefundServiceTest {
 
         assertThat(rejected.getStatus()).isEqualTo(RefundStatus.REJECTED);
         verify(refundRequestRepository).save(request);
+        verify(walletService, never()).creditWithoutLedger(any(), any());
         verify(walletService, never()).credit(any(), any());
+    }
+
+    @Test
+    void refundLogsOnlyOneTransactionWhenRealWalletServiceIsUsed() {
+        UserRepository userRepo = Mockito.mock(UserRepository.class);
+        User user = User.builder()
+                .uniId("22345678")
+                .balanceCents(5000L)
+                .build();
+        when(userRepo.findByUniId("22345678")).thenReturn(Optional.of(user));
+
+        WalletService realWalletService = new WalletService(userRepo, ledgerService, new BigDecimal("50.00"));
+        RefundService serviceWithRealWallet = new RefundService(jobLifecycleService, realWalletService, ledgerService, refundRequestRepository);
+
+        Job job = newQueuedJobWithCost(new BigDecimal("6.20"));
+        org.springframework.test.util.ReflectionTestUtils.setField(job, "id", 42L);
+        serviceWithRealWallet.cancelAndRefund(job, job.getQueuedAt().plusSeconds(60));
+
+        // Verify that ledgerService.record was called EXACTLY ONCE across the entire operation,
+        // and that it was a REFUND transaction, not a TOPUP.
+        verify(ledgerService, times(1)).record(any(), any(), any(), any(), any(), any());
+        verify(ledgerService).record(eq("22345678"), eq(42L), eq(TransactionType.REFUND),
+                eq(new BigDecimal("6.20")), eq(new BigDecimal("56.20")), eq("Refund for cancelled job 42"));
+        verify(ledgerService, never()).record(any(), any(), eq(TransactionType.TOPUP), any(), any(), any());
     }
 
     @Test
