@@ -60,8 +60,51 @@ public class WalletService {
         return toDollars(updatedCents);
     }
 
+    /**
+     * Credits the user's wallet balance and records a TOPUP transaction in the ledger.
+     * This is the standard top-up path used by the wallet controller and external balance operations.
+     *
+     * @param ownerUniId the student or staff uniId
+     * @param amount the dollar amount to credit
+     * @return the new balance in dollars
+     */
     @Transactional
     public BigDecimal credit(String ownerUniId, BigDecimal amount) {
+        return credit(ownerUniId, amount, TransactionType.TOPUP, null, "Wallet balance top-up");
+    }
+
+    /**
+     * Credits the user's wallet balance without recording a transaction in the ledger.
+     * Used by internal services such as {@link com.uwa.printerfarm.job.RefundService}
+     * that record their own specialized transaction (e.g. REFUND) to prevent duplicate
+     * ledger entries.
+     *
+     * @param ownerUniId the student or staff uniId
+     * @param amount the dollar amount to credit
+     * @return the new balance in dollars
+     */
+    @Transactional
+    public BigDecimal creditWithoutLedger(String ownerUniId, BigDecimal amount) {
+        return applyCredit(ownerUniId, amount, false, null, null, null);
+    }
+
+    /**
+     * Credits the user's wallet balance and records a transaction in the ledger with the supplied details.
+     *
+     * @param ownerUniId the student or staff uniId
+     * @param amount the dollar amount to credit
+     * @param type the transaction type to record (e.g. TOPUP or REFUND)
+     * @param jobId the related job ID, or null if not associated with a job
+     * @param description human-readable description for the ledger
+     * @return the new balance in dollars
+     */
+    @Transactional
+    public BigDecimal credit(String ownerUniId, BigDecimal amount, TransactionType type, Long jobId, String description) {
+        return applyCredit(ownerUniId, amount, true, type, jobId, description);
+    }
+
+    private BigDecimal applyCredit(String ownerUniId, BigDecimal amount, boolean recordLedger,
+                                    TransactionType type, Long jobId, String description) {
         User user = getOrCreateUser(ownerUniId);
         long amountCents = toCents(amount);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
@@ -71,8 +114,8 @@ public class WalletService {
         userRepository.save(user);
 
         BigDecimal balanceAfter = toDollars(updatedCents);
-        if (transactionLedgerService != null) {
-            transactionLedgerService.record(ownerUniId, null, TransactionType.TOPUP, amount, balanceAfter, "Wallet balance top-up");
+        if (recordLedger && transactionLedgerService != null && type != null) {
+            transactionLedgerService.record(ownerUniId, jobId, type, amount, balanceAfter, description);
         }
 
         return balanceAfter;
