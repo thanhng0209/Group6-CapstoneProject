@@ -67,7 +67,7 @@ class WalletServiceTest {
 
     @Test
     void debitReducesBalanceAndSavesToDatabase() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.debit("22345678", new BigDecimal("6.20"));
 
@@ -78,7 +78,7 @@ class WalletServiceTest {
 
     @Test
     void creditIncreasesBalanceAndSavesToDatabase() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"));
 
@@ -91,7 +91,7 @@ class WalletServiceTest {
 
     @Test
     void debitBeyondBalanceThrowsAndLeavesBalanceUnchanged() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         assertThatThrownBy(() -> walletService.debit("22345678", new BigDecimal("999.00")))
                 .isInstanceOf(InsufficientBalanceException.class);
