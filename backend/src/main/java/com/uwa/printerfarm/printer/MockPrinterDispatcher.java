@@ -100,6 +100,8 @@ public class MockPrinterDispatcher {
             updateTelemetry(job, started, now);
             if (job.getRemainingSeconds() <= 0) {
                 completeJob(job);
+            } else {
+                jobRepository.save(job);
             }
         }
     }
@@ -249,7 +251,6 @@ public class MockPrinterDispatcher {
 
         job.setProgressPercent(progressPercent);
         job.setRemainingSeconds(remainingSeconds);
-        jobRepository.save(job);
     }
 
     /**

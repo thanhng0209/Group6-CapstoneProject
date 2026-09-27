@@ -11,15 +11,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -239,12 +246,64 @@ class JobControllerTest {
     @Test
     void cancelPrintingJobThrowsInvalidJobStatusTransitionException() throws Exception {
         when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
-        when(jobLifecycleService.cancel(eq(sampleJob), any()))
+        when(refundService.cancelAndRefund(eq(sampleJob), any()))
                 .thenThrow(new InvalidJobStatusTransitionException(JobStatus.PRINTING, JobStatus.CANCELLED));
 
         mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+    }
+
+    @Test
+    void cancelWithFallbackConstructorWithinWindowReportsAutoRefunded() {
+        JobRepository repo = mock(JobRepository.class);
+        JobLifecycleService lifecycleService = new JobLifecycleService(5);
+        JobController fallbackController = new JobController(
+                jobSubmissionService, lifecycleService, repo, printerRepository);
+
+        Job job = new Job("22345678", "prusa-xl-1", "cube.gcode", "PLA",
+                new BigDecimal("50.00"), new BigDecimal("120.00"));
+        job.assignId(101L);
+        when(repo.findById(101L)).thenReturn(Optional.of(job));
+        when(repo.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("22345678");
+
+        ResponseEntity<?> response = fallbackController.cancel(101L, null, auth);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertThat(body.get("refundDecision")).isEqualTo("AUTO_REFUNDED");
+        assertThat(body.get("status")).isEqualTo("CANCELLED");
+        assertThat((String) body.get("message")).contains("refund service unavailable");
+    }
+
+    @Test
+    void cancelWithFallbackConstructorOutsideWindowReportsRequiresApproval() {
+        JobRepository repo = mock(JobRepository.class);
+        JobLifecycleService lifecycleService = new JobLifecycleService(5);
+        JobController fallbackController = new JobController(
+                jobSubmissionService, lifecycleService, repo, printerRepository);
+
+        Job job = new Job("22345678", "prusa-xl-1", "cube.gcode", "PLA",
+                new BigDecimal("50.00"), new BigDecimal("120.00"));
+        job.assignId(101L);
+        ReflectionTestUtils.setField(job, "queuedAt", Instant.now().minus(Duration.ofMinutes(10)));
+        when(repo.findById(101L)).thenReturn(Optional.of(job));
+        when(repo.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("22345678");
+
+        ResponseEntity<?> response = fallbackController.cancel(101L, null, auth);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        // Crucial: In the old code, this would be AUTO_REFUNDED! With our fix, it is REQUIRES_APPROVAL!
+        assertThat(body.get("refundDecision")).isEqualTo("REQUIRES_APPROVAL");
+        assertThat(body.get("status")).isEqualTo("CANCELLED");
+        assertThat((String) body.get("message")).contains("refund service unavailable");
     }
 
     @Test
