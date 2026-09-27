@@ -1,20 +1,20 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { UserService } from '../services/user.service';
-import { AuthService } from '../auth/auth.service';
-import { JobService } from '../services/job.service';
-import { UserDashboard } from '../models/user.model';
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { Router, RouterLink, RouterLinkActive } from "@angular/router";
+import { UserService } from "../services/user.service";
+import { AuthService } from "../auth/auth.service";
+import { JobService } from "../services/job.service";
+import { UserDashboard } from "../models/user.model";
 
-type DashboardJob = UserDashboard['currentJobs'][number];
+type DashboardJob = UserDashboard["currentJobs"][number];
 
 @Component({
-  selector: 'app-dashboard',
+  selector: "app-dashboard",
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
-  templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css',
+  templateUrl: "./dashboard.component.html",
+  styleUrl: "./dashboard.component.css",
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   dashboard: UserDashboard | null = null;
@@ -22,12 +22,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isLoading = true;
   isRefreshing = false;
   cancellingJobId: number | null = null;
+  controllingJobId: number | null = null;
 
   errorMessage: string | null = null;
 
   feedbackMessage: {
     text: string;
-    type: 'success' | 'error';
+    type: "success" | "error";
   } | null = null;
 
   lastUpdated: Date = new Date();
@@ -46,8 +47,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private userService: UserService,
     private authService: AuthService,
     private jobService: JobService,
-    private router: Router
-  ) { }
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
     this.loadInitialData();
@@ -87,8 +88,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
 
       error: (err) => {
-        console.error('Failed to load dashboard', err);
-        this.errorMessage = 'Failed to load dashboard data.';
+        console.error("Failed to load dashboard", err);
+        this.errorMessage = "Failed to load dashboard data.";
         this.isLoading = false;
       },
     });
@@ -109,8 +110,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
 
       error: (err) => {
-        console.error('Failed to refresh dashboard', err);
-        this.errorMessage = 'Failed to refresh dashboard data.';
+        console.error("Failed to refresh dashboard", err);
+        this.errorMessage = "Failed to refresh dashboard data.";
         this.isRefreshing = false;
       },
     });
@@ -163,7 +164,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   isEligibleForCancel(job: DashboardJob): boolean {
-    return job.status === 'QUEUED';
+    return (
+      job.status === "QUEUED" ||
+      job.status === "PRINTING" ||
+      job.status === "PAUSED"
+    );
+  }
+
+  isEligibleForPause(job: DashboardJob): boolean {
+    return job.status === "PRINTING";
+  }
+
+  isEligibleForResume(job: DashboardJob): boolean {
+    return job.status === "PAUSED";
+  }
+
+  pauseJob(job: DashboardJob): void {
+    this.controlJob(job, "pause");
+  }
+
+  resumeJob(job: DashboardJob): void {
+    this.controlJob(job, "resume");
+  }
+
+  private controlJob(job: DashboardJob, action: "pause" | "resume"): void {
+    if (this.controllingJobId !== null) {
+      return;
+    }
+    this.controllingJobId = job.jobId;
+    const request =
+      action === "pause"
+        ? this.jobService.pauseJob(job.jobId)
+        : this.jobService.resumeJob(job.jobId);
+    request.subscribe({
+      next: () => {
+        this.controllingJobId = null;
+        this.loadInitialData();
+      },
+      error: (err) => {
+        this.controllingJobId = null;
+        this.feedbackMessage = {
+          text: err.error?.errors?.[0] || `Failed to ${action} print job.`,
+          type: "error",
+        };
+      },
+    });
   }
 
   cancelJob(job: DashboardJob): void {
@@ -172,7 +217,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     const confirmCancel = window.confirm(
-      `Are you sure you want to cancel print job #${job.jobId} ("${job.fileName}")?\n\nThis will stop the job and process a refund to your balance.`
+      `Are you sure you want to cancel print job #${job.jobId} ("${job.fileName}")?\n\nThis will stop the job and process a refund to your balance.`,
     );
 
     if (!confirmCancel) {
@@ -188,7 +233,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         this.feedbackMessage = {
           text: res.message || `Job #${job.jobId} cancelled successfully.`,
-          type: 'success',
+          type: "success",
         };
 
         // Reload the complete dashboard.
@@ -196,7 +241,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loadInitialData();
 
         setTimeout(() => {
-          if (this.feedbackMessage?.type === 'success') {
+          if (this.feedbackMessage?.type === "success") {
             this.feedbackMessage = null;
           }
         }, 6000);
@@ -207,11 +252,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         const msg =
           err.error?.errors?.[0] ||
-          'Failed to cancel print job. It may have already started printing.';
+          "Failed to cancel print job. It may have already started printing.";
 
         this.feedbackMessage = {
           text: msg,
-          type: 'error',
+          type: "error",
         };
       },
     });
@@ -219,17 +264,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   formatDate(isoString: string | null | undefined): string {
     if (!isoString) {
-      return '-';
+      return "-";
     }
 
     try {
       const d = new Date(isoString);
 
       return d.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch {
       return isoString;
@@ -238,7 +283,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(["/login"]);
   }
 
   openTopUpModal(): void {
@@ -276,9 +321,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   getProjectedBalance(): number {
     const current = this.dashboard?.balance ?? 0;
 
-    const add = this.isValidTopUpAmount()
-      ? Number(this.topUpAmount)
-      : 0;
+    const add = this.isValidTopUpAmount() ? Number(this.topUpAmount) : 0;
 
     return Math.round((current + add) * 100) / 100;
   }
@@ -286,7 +329,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   confirmTopUp(): void {
     if (!this.isValidTopUpAmount() || !this.dashboard) {
       this.topUpErrorMessage =
-        'Please select or enter a valid dollar amount greater than 0.';
+        "Please select or enter a valid dollar amount greater than 0.";
       return;
     }
 
@@ -295,53 +338,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isToppingUp = true;
     this.topUpErrorMessage = null;
 
-    this.userService
-      .topUpBalance(this.dashboard.uniId, amount)
-      .subscribe({
-        next: (res) => {
-          this.isToppingUp = false;
+    this.userService.topUpBalance(this.dashboard.uniId, amount).subscribe({
+      next: (res) => {
+        this.isToppingUp = false;
 
-          const newBalance =
-            res?.balanceAfter !== undefined
-              ? Number(res.balanceAfter)
-              : this.dashboard!.balance + amount;
+        const newBalance =
+          res?.balanceAfter !== undefined
+            ? Number(res.balanceAfter)
+            : this.dashboard!.balance + amount;
 
-          this.dashboard!.balance = newBalance;
+        this.dashboard!.balance = newBalance;
 
-          this.closeTopUpModal();
+        this.closeTopUpModal();
 
-          this.feedbackMessage = {
-            text: `Successfully topped up $${amount.toFixed(
-              2
-            )}! Available balance is now $${newBalance.toFixed(2)}.`,
-            type: 'success',
-          };
+        this.feedbackMessage = {
+          text: `Successfully topped up $${amount.toFixed(
+            2,
+          )}! Available balance is now $${newBalance.toFixed(2)}.`,
+          type: "success",
+        };
 
-          // Reload complete dashboard data to stay in sync.
-          this.userService.getDashboard().subscribe({
-            next: (userData) => {
-              this.dashboard = userData;
-              this.lastUpdated = new Date();
-            },
-          });
+        // Reload complete dashboard data to stay in sync.
+        this.userService.getDashboard().subscribe({
+          next: (userData) => {
+            this.dashboard = userData;
+            this.lastUpdated = new Date();
+          },
+        });
 
-          setTimeout(() => {
-            if (this.feedbackMessage?.type === 'success') {
-              this.feedbackMessage = null;
-            }
-          }, 6000);
-        },
+        setTimeout(() => {
+          if (this.feedbackMessage?.type === "success") {
+            this.feedbackMessage = null;
+          }
+        }, 6000);
+      },
 
-        error: (err) => {
-          this.isToppingUp = false;
+      error: (err) => {
+        this.isToppingUp = false;
 
-          const msg =
-            err.error?.error ||
-            err.error?.errors?.[0] ||
-            'Top-up failed. Please verify your connection and try again.';
+        const msg =
+          err.error?.error ||
+          err.error?.errors?.[0] ||
+          "Top-up failed. Please verify your connection and try again.";
 
-          this.topUpErrorMessage = msg;
-        },
-      });
+        this.topUpErrorMessage = msg;
+      },
+    });
   }
 }

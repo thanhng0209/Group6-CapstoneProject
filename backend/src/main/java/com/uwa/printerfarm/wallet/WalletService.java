@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Optional;
 
 /**
  * Manages student wallet balances backed by real database persistence on the User entity.
@@ -37,14 +38,14 @@ public class WalletService {
 
     @Transactional
     public BigDecimal getBalance(String ownerUniId) {
-        User user = getOrCreateUser(ownerUniId);
+        User user = getOrCreateUser(ownerUniId, false);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
         return toDollars(currentCents);
     }
 
     @Transactional
     public BigDecimal debit(String ownerUniId, BigDecimal amount) {
-        User user = getOrCreateUser(ownerUniId);
+        User user = getOrCreateUser(ownerUniId, true);
         long amountCents = toCents(amount);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
         BigDecimal currentDollars = toDollars(currentCents);
@@ -62,7 +63,7 @@ public class WalletService {
 
     @Transactional
     public BigDecimal credit(String ownerUniId, BigDecimal amount) {
-        User user = getOrCreateUser(ownerUniId);
+        User user = getOrCreateUser(ownerUniId, true);
         long amountCents = toCents(amount);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
 
@@ -78,8 +79,16 @@ public class WalletService {
         return balanceAfter;
     }
 
-    private User getOrCreateUser(String ownerUniId) {
-        return userRepository.findByUniId(ownerUniId)
+    /**
+     * @param forUpdate when true the row is read with a pessimistic write lock, so the
+     *                  read-modify-write in debit/credit cannot interleave with another
+     *                  request for the same user (lost update on the balance).
+     */
+    private User getOrCreateUser(String ownerUniId, boolean forUpdate) {
+        Optional<User> existing = forUpdate
+                ? userRepository.findByUniIdForUpdate(ownerUniId)
+                : userRepository.findByUniId(ownerUniId);
+        return existing
                 .orElseGet(() -> {
                     long defaultCents = toCents(defaultStartingBalance);
                     User newUser = User.builder()

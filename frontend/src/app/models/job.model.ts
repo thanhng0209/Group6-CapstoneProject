@@ -1,4 +1,10 @@
-export type JobStatus = 'QUEUED' | 'PRINTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type JobStatus =
+  | "QUEUED"
+  | "PRINTING"
+  | "PAUSED"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
 
 export interface PrinterOption {
   id: string;
@@ -46,6 +52,8 @@ export interface Job {
   estimatedMinutes: number;
   cost: number;
   status: JobStatus;
+  progressPercent: number;
+  remainingSeconds: number;
   queuedAt: string;
   completedAt: string | null;
 }
@@ -53,6 +61,6 @@ export interface Job {
 export interface CancelJobResponse {
   jobId: number;
   status: JobStatus | string;
-  refundDecision: 'AUTO_REFUNDED' | 'REQUIRES_APPROVAL' | string;
+  refundDecision: "AUTO_REFUNDED" | "REQUIRES_APPROVAL" | string;
   message: string;
 }

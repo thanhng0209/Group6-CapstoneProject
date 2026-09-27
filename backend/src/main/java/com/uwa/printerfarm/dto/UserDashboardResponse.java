@@ -42,5 +42,9 @@ public class UserDashboardResponse {
         private String status;
 
         private String submittedAt;
+
+        private int progressPercent;
+
+        private long remainingSeconds;
     }
 }

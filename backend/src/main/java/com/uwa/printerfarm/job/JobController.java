@@ -1,10 +1,12 @@
 package com.uwa.printerfarm.job;
 
 import com.uwa.printerfarm.printer.PrinterRepository;
+import com.uwa.printerfarm.printer.MockPrinterDispatcher;
 import com.uwa.printerfarm.security.UserPrincipal;
 import com.uwa.printerfarm.wallet.InsufficientBalanceException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST controller exposing endpoints for student 3D print job submissions,
@@ -34,27 +37,62 @@ public class JobController {
     private final JobLifecycleService jobLifecycleService;
     private final JobRepository jobRepository;
     private final PrinterRepository printerRepository;
+    private final MockPrinterDispatcher mockPrinterDispatcher;
+    private final RefundService refundService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository,
-            PrinterRepository printerRepository) {
+            PrinterRepository printerRepository,
+            ObjectProvider<MockPrinterDispatcher> mockPrinterDispatcherProvider,
+            RefundService refundService) {
+        this(jobSubmissionService,
+                jobLifecycleService,
+                jobRepository,
+                printerRepository,
+                mockPrinterDispatcherProvider != null ? mockPrinterDispatcherProvider.getIfAvailable() : null,
+                refundService);
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository,
+            PrinterRepository printerRepository,
+            MockPrinterDispatcher mockPrinterDispatcher,
+            RefundService refundService) {
         this.jobSubmissionService = jobSubmissionService;
         this.jobLifecycleService = jobLifecycleService;
         this.jobRepository = jobRepository;
         this.printerRepository = printerRepository;
+        this.mockPrinterDispatcher = mockPrinterDispatcher;
+        this.refundService = refundService;
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository,
+            PrinterRepository printerRepository,
+            RefundService refundService) {
+        this(jobSubmissionService, jobLifecycleService, jobRepository, printerRepository, (MockPrinterDispatcher) null, refundService);
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository,
+            PrinterRepository printerRepository) {
+        this(jobSubmissionService, jobLifecycleService, jobRepository, printerRepository, (MockPrinterDispatcher) null, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository) {
-        this(jobSubmissionService, jobLifecycleService, jobRepository, null);
+        this(jobSubmissionService, jobLifecycleService, jobRepository, null, (MockPrinterDispatcher) null, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService) {
-        this(jobSubmissionService, jobLifecycleService, null, null);
+        this(jobSubmissionService, jobLifecycleService, null, null, (MockPrinterDispatcher) null, null);
     }
 
     /**
@@ -156,16 +194,82 @@ public class JobController {
             }
         }
 
-        RefundDecision decision = jobLifecycleService.cancel(job, Instant.now());
+        JobStatus statusBeforeCancellation = job.getStatus();
+        RefundDecision decision;
+        String message;
+
+        if (refundService != null) {
+            Optional<RefundRequest> refundRequest = refundService.cancelAndRefund(job, Instant.now());
+            decision = refundRequest.isEmpty()
+                    ? RefundDecision.AUTO_REFUNDED
+                    : RefundDecision.REQUIRES_APPROVAL;
+            message = decision == RefundDecision.AUTO_REFUNDED
+                    ? "Job cancelled and automatically refunded."
+                    : "Job cancelled. Refund requires manager approval.";
+        } else {
+            decision = jobLifecycleService.cancel(job, Instant.now());
+            message = decision == RefundDecision.AUTO_REFUNDED
+                    ? "Job cancelled (refund service unavailable; refund was not processed)."
+                    : "Job cancelled (refund service unavailable; approval request was not created).";
+        }
+
+        if (mockPrinterDispatcher != null && statusBeforeCancellation != JobStatus.QUEUED) {
+            mockPrinterDispatcher.releasePrinterAfterCancellation(job);
+        }
         jobRepository.save(job);
 
         return ResponseEntity.ok(Map.of(
                 "jobId", job.getId(),
                 "status", job.getStatus().name(),
                 "refundDecision", decision.name(),
-                "message", decision == RefundDecision.AUTO_REFUNDED
-                        ? "Job cancelled and automatically refunded."
-                        : "Job cancelled. Refund requires manager approval."));
+                "message", message));
+    }
+
+    @PostMapping("/{id}/pause")
+    public ResponseEntity<?> pause(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            Authentication authentication) {
+        return controlJob(id, JobStatus.PRINTING, true, principal, authentication);
+    }
+
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<?> resume(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            Authentication authentication) {
+        return controlJob(id, JobStatus.PAUSED, false, principal, authentication);
+    }
+
+    private ResponseEntity<?> controlJob(Long id, JobStatus expectedStatus, boolean pause,
+            UserPrincipal principal, Authentication authentication) {
+        if (mockPrinterDispatcher == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                    "errors", List.of("Virtual printer controls are not enabled"),
+                    "code", "DISPATCHER_UNAVAILABLE"));
+        }
+
+        Job job = jobRepository.findById(id).orElse(null);
+        if (job == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "errors", List.of("Job not found with id: " + id),
+                    "code", "JOB_NOT_FOUND"));
+        }
+        String currentUniId = resolveUniId(principal, authentication, null);
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
+        if (!isAdmin && (currentUniId == null || !currentUniId.equals(job.getOwnerUniId()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "errors", List.of("You are not authorized to control this job"),
+                "code", "FORBIDDEN"));
+        }
+        if (job.getStatus() != expectedStatus) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "errors", List.of("Job must be " + expectedStatus + " to perform this action"),
+                    "code", "INVALID_STATUS_TRANSITION"));
+        }
+
+        return ResponseEntity.ok(pause
+                ? mockPrinterDispatcher.pauseJob(job)
+                : mockPrinterDispatcher.resumeJob(job));
     }
 
     /**

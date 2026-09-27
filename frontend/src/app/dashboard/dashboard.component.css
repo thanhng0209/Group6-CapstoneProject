@@ -3,7 +3,11 @@
   min-height: 100vh;
   background: #0d1117;
   color: #e6edf3;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .dashboard-shell {
@@ -83,7 +87,9 @@
   text-decoration: none;
   font-size: 0.86rem;
   font-weight: 500;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   cursor: pointer;
 }
 
@@ -277,14 +283,14 @@
   color: #58a6ff;
 }
 
-.summary-card>strong {
+.summary-card > strong {
   display: block;
   color: #f0f6fc;
   font-size: 1.8rem;
   margin-top: 1rem;
 }
 
-.balance-summary>strong {
+.balance-summary > strong {
   color: #3fb950;
 }
 
@@ -345,8 +351,6 @@
   border: 1px solid #f85149;
   color: #ffa198;
 }
-
-
 
 /* ── Jobs Section ─────────────────────────────────────────────────────── */
 .jobs-section {
@@ -571,6 +575,31 @@
   white-space: nowrap;
 }
 
+.progress-cell {
+  min-width: 130px;
+  color: #8b949e;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.progress-track {
+  display: inline-block;
+  width: 72px;
+  height: 6px;
+  margin-right: 0.45rem;
+  overflow: hidden;
+  vertical-align: middle;
+  background: #21262d;
+  border-radius: 3px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #58a6ff;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
 /* ── Status Badges ────────────────────────────────────────────────────── */
 .status-badge {
   display: inline-flex;
@@ -614,6 +643,13 @@
   background: #58a6ff;
   box-shadow: 0 0 6px #58a6ff;
   animation: pulse 1.5s infinite;
+}
+
+/* PAUSED */
+.status-paused {
+  background: rgba(188, 140, 255, 0.15);
+  color: #d2a8ff;
+  border: 1px solid rgba(188, 140, 255, 0.4);
 }
 
 /* COMPLETED */
@@ -863,7 +899,9 @@
   border-radius: 8px;
   padding: 0 0.75rem;
   margin-bottom: 1.25rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .custom-amount-wrap:focus-within {
@@ -985,7 +1023,6 @@
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-
   .dashboard-sidebar {
     width: 210px;
   }
@@ -1000,7 +1037,6 @@
 }
 
 @media (max-width: 700px) {
-
   .dashboard-shell {
     display: block;
   }

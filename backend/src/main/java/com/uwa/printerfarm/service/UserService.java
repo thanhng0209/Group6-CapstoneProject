@@ -86,7 +86,8 @@ public class UserService {
         String status = job.getStatus().name();
 
         return "COMPLETED".equals(status)
-                || "FAILED".equals(status);
+                                || "FAILED".equals(status)
+                                || "CANCELLED".equals(status);
     }
 
     private PrintJobSummary toPrintJobSummary(Job job) {
@@ -100,6 +101,8 @@ public class UserService {
                                 ? job.getQueuedAt().toString()
                                 : null
                 )
+                .progressPercent(job.getProgressPercent())
+                .remainingSeconds(job.getRemainingSeconds())
                 .build();
     }
 }
