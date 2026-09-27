@@ -47,35 +47,52 @@ public class JobController {
             PrinterRepository printerRepository,
             ObjectProvider<MockPrinterDispatcher> mockPrinterDispatcherProvider,
             RefundService refundService) {
+        this(jobSubmissionService,
+                jobLifecycleService,
+                jobRepository,
+                printerRepository,
+                mockPrinterDispatcherProvider != null ? mockPrinterDispatcherProvider.getIfAvailable() : null,
+                refundService);
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository,
+            PrinterRepository printerRepository,
+            MockPrinterDispatcher mockPrinterDispatcher,
+            RefundService refundService) {
         this.jobSubmissionService = jobSubmissionService;
         this.jobLifecycleService = jobLifecycleService;
         this.jobRepository = jobRepository;
         this.printerRepository = printerRepository;
-        this.mockPrinterDispatcher = mockPrinterDispatcherProvider.getIfAvailable();
+        this.mockPrinterDispatcher = mockPrinterDispatcher;
         this.refundService = refundService;
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository,
+            PrinterRepository printerRepository,
+            RefundService refundService) {
+        this(jobSubmissionService, jobLifecycleService, jobRepository, printerRepository, (MockPrinterDispatcher) null, refundService);
+    }
+
+    public JobController(JobSubmissionService jobSubmissionService,
+            JobLifecycleService jobLifecycleService,
+            JobRepository jobRepository,
             PrinterRepository printerRepository) {
-        this.jobSubmissionService = jobSubmissionService;
-        this.jobLifecycleService = jobLifecycleService;
-        this.jobRepository = jobRepository;
-        this.printerRepository = printerRepository;
-        this.mockPrinterDispatcher = null;
-        this.refundService = null;
+        this(jobSubmissionService, jobLifecycleService, jobRepository, printerRepository, (MockPrinterDispatcher) null, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService,
             JobRepository jobRepository) {
-        this(jobSubmissionService, jobLifecycleService, jobRepository, null, null, null);
+        this(jobSubmissionService, jobLifecycleService, jobRepository, null, (MockPrinterDispatcher) null, null);
     }
 
     public JobController(JobSubmissionService jobSubmissionService,
             JobLifecycleService jobLifecycleService) {
-        this(jobSubmissionService, jobLifecycleService, null, null);
+        this(jobSubmissionService, jobLifecycleService, null, null, (MockPrinterDispatcher) null, null);
     }
 
     /**
@@ -178,29 +195,34 @@ public class JobController {
         }
 
         JobStatus statusBeforeCancellation = job.getStatus();
-        Optional<RefundRequest> refundRequest = refundService != null
-                ? refundService.cancelAndRefund(job, Instant.now())
-                : Optional.empty();
+        RefundDecision decision;
+        String message;
 
-        if (refundService == null) {
-            jobLifecycleService.cancel(job, Instant.now());
+        if (refundService != null) {
+            Optional<RefundRequest> refundRequest = refundService.cancelAndRefund(job, Instant.now());
+            decision = refundRequest.isEmpty()
+                    ? RefundDecision.AUTO_REFUNDED
+                    : RefundDecision.REQUIRES_APPROVAL;
+            message = decision == RefundDecision.AUTO_REFUNDED
+                    ? "Job cancelled and automatically refunded."
+                    : "Job cancelled. Refund requires manager approval.";
+        } else {
+            decision = jobLifecycleService.cancel(job, Instant.now());
+            message = decision == RefundDecision.AUTO_REFUNDED
+                    ? "Job cancelled (refund service unavailable; refund was not processed)."
+                    : "Job cancelled (refund service unavailable; approval request was not created).";
         }
+
         if (mockPrinterDispatcher != null && statusBeforeCancellation != JobStatus.QUEUED) {
             mockPrinterDispatcher.releasePrinterAfterCancellation(job);
         }
         jobRepository.save(job);
 
-        RefundDecision decision = refundRequest.isEmpty()
-                ? RefundDecision.AUTO_REFUNDED
-                : RefundDecision.REQUIRES_APPROVAL;
-
         return ResponseEntity.ok(Map.of(
                 "jobId", job.getId(),
                 "status", job.getStatus().name(),
                 "refundDecision", decision.name(),
-                "message", decision == RefundDecision.AUTO_REFUNDED
-                        ? "Job cancelled and automatically refunded."
-                        : "Job cancelled. Refund requires manager approval."));
+                "message", message));
     }
 
     @PostMapping("/{id}/pause")
