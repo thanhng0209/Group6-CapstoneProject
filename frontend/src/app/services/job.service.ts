@@ -95,6 +95,16 @@ export class JobService {
     return this.http.post<Job>(`${API_BASE}/jobs/${jobId}/resume`, {});
   }
 
+  confirmCollection(
+    jobId: number,
+  ): Observable<{ jobId: number; collectedAt: string; message: string }> {
+    return this.http.post<{
+      jobId: number;
+      collectedAt: string;
+      message: string;
+    }>(`${API_BASE}/jobs/${jobId}/collect`, {});
+  }
+
   calculateEstimatedCost(
     material: string | null | undefined,
     grams: number | null | undefined,

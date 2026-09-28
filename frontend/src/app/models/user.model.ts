@@ -22,6 +22,7 @@ export interface PrintJobSummary {
     | "FAILED"
     | "CANCELLED";
   submittedAt: string;
+  completedAt?: string | null;
   progressPercent: number;
   remainingSeconds: number;
 }
@@ -34,4 +35,5 @@ export interface UserDashboard {
   balance: number;
   currentJobs: PrintJobSummary[];
   printHistory: PrintJobSummary[];
+  pendingCollectionJobs: PrintJobSummary[];
 }
