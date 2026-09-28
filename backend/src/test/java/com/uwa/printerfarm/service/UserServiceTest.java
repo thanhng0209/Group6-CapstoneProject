@@ -217,6 +217,14 @@ void getDashboardSeparatesCurrentAndHistoricalJobs() {
     when(cancelledJob.getStatus()).thenReturn(JobStatus.CANCELLED);
     when(cancelledJob.getQueuedAt()).thenReturn(Instant.parse("2026-09-23T01:00:00Z"));
 
+        Job collectedJob = mock(Job.class);
+        when(collectedJob.getId()).thenReturn(6L);
+        when(collectedJob.getFileName()).thenReturn("collected-print.gcode");
+        when(collectedJob.getPrinterId()).thenReturn("printer-06");
+        when(collectedJob.getStatus()).thenReturn(JobStatus.COMPLETED);
+        when(collectedJob.getQueuedAt()).thenReturn(Instant.parse("2026-09-22T01:00:00Z"));
+        when(collectedJob.getCollectedAt()).thenReturn(Instant.parse("2026-09-22T04:00:00Z"));
+
     when(userRepository.findByUniId("12345678"))
             .thenReturn(Optional.of(user));
 
@@ -226,13 +234,15 @@ void getDashboardSeparatesCurrentAndHistoricalJobs() {
                     printingJob,
                     completedJob,
                     failedJob,
-                    cancelledJob
+                    cancelledJob,
+                    collectedJob
             ));
 
     UserDashboardResponse response = userService.getDashboard("12345678");
 
     assertEquals(2, response.getCurrentJobs().size());
-    assertEquals(3, response.getPrintHistory().size());
+        assertEquals(4, response.getPrintHistory().size());
+        assertEquals(1, response.getPendingCollectionJobs().size());
 
     assertEquals("queued-print.gcode",
             response.getCurrentJobs().get(0).getFileName());
@@ -245,6 +255,10 @@ void getDashboardSeparatesCurrentAndHistoricalJobs() {
             response.getPrintHistory().get(1).getFileName());
     assertEquals("cancelled-print.gcode",
             response.getPrintHistory().get(2).getFileName());
+    assertEquals("collected-print.gcode",
+            response.getPrintHistory().get(3).getFileName());
+    assertEquals("completed-print.gcode",
+            response.getPendingCollectionJobs().get(0).getFileName());
 
     assertEquals("QUEUED",
             response.getCurrentJobs().get(0).getStatus());
