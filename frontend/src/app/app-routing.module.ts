@@ -3,6 +3,7 @@ import { LoginComponent } from "./auth/login/login.component";
 import { DashboardComponent } from "./dashboard/dashboard.component";
 import { JobSubmissionComponent } from "./job-submission/job-submission.component";
 import { AdminDashboardComponent } from "./admin/admin-dashboard.component";
+import { PendingCollectionComponent } from "./pending-collection/pending-collection.component";
 import { authGuard } from "./auth/auth.guard";
 import { adminGuard } from "./auth/auth.guard";
 
@@ -11,6 +12,11 @@ export const routes: Routes = [
   {
     path: "dashboard",
     component: DashboardComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: "pending-collection",
+    component: PendingCollectionComponent,
     canActivate: [authGuard],
   },
   {

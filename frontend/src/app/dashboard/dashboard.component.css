@@ -698,6 +698,28 @@
   cursor: not-allowed;
 }
 
+.collect-btn {
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+  color: #3fb950;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collect-btn:hover:not(:disabled) {
+  background: #238636;
+  border-color: #3fb950;
+  color: #ffffff;
+}
+
+.collect-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .ineligible-text {
   color: #484f58;
   font-size: 0.9rem;
@@ -1009,6 +1031,56 @@
 .confirm-topup-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.collection-confirmation-modal {
+  max-width: 500px;
+}
+
+.collection-confirmation-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(63, 185, 80, 0.14);
+  color: #3fb950;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.collection-job-summary {
+  padding: 1rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-left: 3px solid #3fb950;
+  border-radius: 6px;
+}
+
+.collection-label {
+  display: block;
+  color: #7d8590;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.collection-file {
+  display: block;
+  margin-top: 0.45rem;
+  color: #f0f6fc;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.collection-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  margin-top: 0.65rem;
+  color: #7d8590;
+  font-size: 0.76rem;
 }
 
 .spinner {
