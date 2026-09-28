@@ -239,6 +239,46 @@ public class JobController {
         return controlJob(id, JobStatus.PAUSED, false, principal, authentication);
     }
 
+    @PostMapping("/{id}/collect")
+    public ResponseEntity<?> confirmCollection(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            Authentication authentication) {
+        if (jobRepository == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "errors", List.of("Job repository is not configured"),
+                    "code", "REPOSITORY_UNAVAILABLE"));
+        }
+
+        Job job = jobRepository.findById(id).orElse(null);
+        if (job == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "errors", List.of("Job not found with id: " + id),
+                    "code", "JOB_NOT_FOUND"));
+        }
+
+        String currentUniId = resolveUniId(principal, authentication, null);
+        if (currentUniId == null || !currentUniId.equals(job.getOwnerUniId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "errors", List.of("You are not authorized to confirm collection for this job"),
+                    "code", "FORBIDDEN"));
+        }
+        if (job.getStatus() != JobStatus.COMPLETED) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "errors", List.of("Only completed jobs can be marked as collected"),
+                    "code", "INVALID_STATUS_TRANSITION"));
+        }
+
+        if (job.getCollectedAt() == null) {
+            job.setCollectedAt(Instant.now());
+            jobRepository.save(job);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "jobId", job.getId(),
+                "collectedAt", job.getCollectedAt().toString(),
+                "message", "Collection confirmed."));
+    }
+
     private ResponseEntity<?> controlJob(Long id, JobStatus expectedStatus, boolean pause,
             UserPrincipal principal, Authentication authentication) {
         if (mockPrinterDispatcher == null) {

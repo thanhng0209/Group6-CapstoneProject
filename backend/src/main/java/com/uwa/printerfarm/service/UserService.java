@@ -6,6 +6,7 @@ import com.uwa.printerfarm.dto.UserDashboardResponse;
 import com.uwa.printerfarm.dto.UserDashboardResponse.PrintJobSummary;
 import com.uwa.printerfarm.job.Job;
 import com.uwa.printerfarm.job.JobRepository;
+import com.uwa.printerfarm.job.JobStatus;
 import com.uwa.printerfarm.model.User;
 import com.uwa.printerfarm.repository.UserRepository;
 import com.uwa.printerfarm.security.JwtUtil;
@@ -71,6 +72,12 @@ public class UserService {
                 .map(this::toPrintJobSummary)
                 .collect(Collectors.toList());
 
+        List<PrintJobSummary> pendingCollectionJobs = jobs.stream()
+                .filter(job -> job.getStatus() == JobStatus.COMPLETED)
+                .filter(job -> job.getCollectedAt() == null)
+                .map(this::toPrintJobSummary)
+                .collect(Collectors.toList());
+
         return UserDashboardResponse.builder()
                 .uniId(user.getUniId())
                 .fullName(user.getFullName())
@@ -79,6 +86,7 @@ public class UserService {
                 .balance(user.getBalanceCents() / 100.0)
                 .currentJobs(currentJobs)
                 .printHistory(printHistory)
+                .pendingCollectionJobs(pendingCollectionJobs)
                 .build();
     }
 
@@ -101,6 +109,7 @@ public class UserService {
                                 ? job.getQueuedAt().toString()
                                 : null
                 )
+                .completedAt(job.getCompletedAt() != null ? job.getCompletedAt().toString() : null)
                 .progressPercent(job.getProgressPercent())
                 .remainingSeconds(job.getRemainingSeconds())
                 .build();

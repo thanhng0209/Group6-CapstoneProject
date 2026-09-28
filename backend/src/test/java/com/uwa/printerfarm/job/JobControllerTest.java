@@ -228,6 +228,48 @@ class JobControllerTest {
         verify(jobLifecycleService, never()).cancel(any(), any());
     }
 
+        @Test
+        void confirmCollectionMarksCompletedJobAsCollected() throws Exception {
+                sampleJob.setStatus(JobStatus.COMPLETED);
+                when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+                when(jobRepository.save(sampleJob)).thenReturn(sampleJob);
+
+                mockMvc.perform(post("/api/jobs/101/collect").with(csrf()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.jobId").value(101L))
+                                .andExpect(jsonPath("$.collectedAt").isNotEmpty())
+                                .andExpect(jsonPath("$.message").value("Collection confirmed."));
+
+                assertThat(sampleJob.getCollectedAt()).isNotNull();
+                verify(jobRepository).save(sampleJob);
+        }
+
+        @Test
+        void confirmCollectionForAnotherUsersJobReturnsForbidden() throws Exception {
+                Job otherUserJob = new Job("99887766", "prusa-xl-1", "other.gcode", "PLA",
+                                new BigDecimal("10.00"), new BigDecimal("20.00"));
+                otherUserJob.assignId(202L);
+                otherUserJob.setStatus(JobStatus.COMPLETED);
+                when(jobRepository.findById(202L)).thenReturn(Optional.of(otherUserJob));
+
+                mockMvc.perform(post("/api/jobs/202/collect").with(csrf()))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+                verify(jobRepository, never()).save(any(Job.class));
+        }
+
+        @Test
+        void confirmCollectionForIncompleteJobReturnsBadRequest() throws Exception {
+                when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+
+                mockMvc.perform(post("/api/jobs/101/collect").with(csrf()))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+
+                verify(jobRepository, never()).save(any(Job.class));
+        }
+
     @Test
     void cancelJobBelongingToAnotherStudentReturnsForbidden() throws Exception {
         Job otherUserJob = new Job("99887766", "prusa-xl-1", "other.gcode", "PLA",

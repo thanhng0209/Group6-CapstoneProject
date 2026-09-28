@@ -1,0 +1,244 @@
+<div class="dashboard-shell" *ngIf="!isLoading && dashboard">
+  <aside class="dashboard-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+          <line x1="12" y1="22" x2="12" y2="15.5" />
+          <polyline points="22 8.5 12 15.5 2 8.5" />
+        </svg>
+      </div>
+      <div><strong>UWA</strong><span>3D PRINT FARM</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="sidebar-link"
+      >
+        <span class="nav-icon">▦</span><span>Summary</span>
+      </a>
+      <a routerLink="/submit" class="sidebar-link">
+        <span class="nav-icon">＋</span><span>Submit Print Job</span>
+      </a>
+      <a routerLink="/dashboard" class="sidebar-link">
+        <span class="nav-icon">▤</span><span>My Print Jobs</span>
+      </a>
+      <a
+        routerLink="/pending-collection"
+        routerLinkActive="active"
+        class="sidebar-link"
+      >
+        <span class="nav-icon">✓</span><span>Pending Collection</span>
+      </a>
+      <div class="sidebar-link disabled">
+        <span class="nav-icon">$</span><span>Transaction History</span>
+        <span class="coming-soon">Soon</span>
+      </div>
+      <a
+        *ngIf="dashboard.role === 'ADMIN'"
+        routerLink="/admin"
+        class="sidebar-link admin-link"
+      >
+        <span class="nav-icon">⚙</span><span>Farm Manager</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          {{ dashboard.fullName.charAt(0).toUpperCase() }}
+        </div>
+        <div class="user-details">
+          <strong>{{ dashboard.fullName }}</strong
+          ><span>{{ dashboard.uniId }}</span>
+        </div>
+      </div>
+      <button type="button" class="sidebar-logout" (click)="logout()">
+        <span>↪</span> Sign out
+      </button>
+    </div>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="dashboard-topbar">
+      <div>
+        <div class="page-label">STUDENT DASHBOARD</div>
+        <h1>Pending Collection</h1>
+      </div>
+      <div class="topbar-actions">
+        <span class="role-badge">{{ dashboard.role }}</span>
+        <a routerLink="/dashboard" class="submit-nav-btn">Back to Dashboard</a>
+      </div>
+    </header>
+
+    <div
+      class="feedback-banner"
+      *ngIf="feedbackMessage"
+      [class.success]="feedbackMessage.type === 'success'"
+      [class.error]="feedbackMessage.type === 'error'"
+    >
+      <span class="feedback-icon">{{
+        feedbackMessage.type === "success" ? "✓" : "⚠"
+      }}</span>
+      <span class="feedback-text">{{ feedbackMessage.text }}</span>
+    </div>
+
+    <div class="feedback-banner error" *ngIf="errorMessage">
+      <span class="feedback-icon">⚠</span
+      ><span class="feedback-text">{{ errorMessage }}</span>
+      <button type="button" class="refresh-btn" (click)="loadDashboard()">
+        Retry
+      </button>
+    </div>
+
+    <section class="jobs-section">
+      <div class="section-title-bar">
+        <div>
+          <h2>Items ready for pickup</h2>
+          <div class="live-indicator-wrapper">
+            <span class="live-text"
+              >Completed print jobs waiting for collection</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="empty-state-box"
+        *ngIf="pendingCollectionJobs.length === 0 && !errorMessage"
+      >
+        <div class="empty-icon">✓</div>
+        <h3>Nothing waiting for collection</h3>
+        <p>Completed print jobs will appear here until you confirm pickup.</p>
+      </div>
+
+      <div class="table-responsive" *ngIf="pendingCollectionJobs.length > 0">
+        <table class="jobs-table">
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>File Name</th>
+              <th>Printer</th>
+              <th>Ready Since</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let job of pendingCollectionJobs">
+              <td class="font-mono">#{{ job.jobId }}</td>
+              <td class="col-filename font-mono" [title]="job.fileName">
+                {{ job.fileName }}
+              </td>
+              <td>
+                <span class="printer-tag">{{ job.printerName }}</span>
+              </td>
+              <td class="col-date">
+                {{ formatDate(job.completedAt || job.submittedAt) }}
+              </td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="collect-btn"
+                  [disabled]="collectingJobId !== null"
+                  (click)="openCollectionConfirmation(job)"
+                >
+                  Confirm collection
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="state-container" *ngIf="isLoading">
+  <p class="state-message">Loading pending collection...</p>
+</div>
+
+<div
+  class="modal-backdrop"
+  *ngIf="selectedCollectionJob as job"
+  (click)="closeCollectionConfirmation()"
+>
+  <section
+    class="modal-card collection-confirmation-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="collection-confirmation-title"
+    tabindex="-1"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="closeCollectionConfirmation()"
+  >
+    <header class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon collection-confirmation-icon" aria-hidden="true"
+          >✓</span
+        >
+        <h3 id="collection-confirmation-title">Confirm collection</h3>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn"
+        aria-label="Close confirmation dialog"
+        [disabled]="collectingJobId !== null"
+        (click)="closeCollectionConfirmation()"
+      >
+        ×
+      </button>
+    </header>
+
+    <div class="modal-body">
+      <p class="modal-intro">
+        Please confirm that you have picked up this completed print. It will be
+        removed from your pending collection list.
+      </p>
+
+      <div class="collection-job-summary">
+        <span class="collection-label">PRINT JOB #{{ job.jobId }}</span>
+        <strong class="collection-file" [title]="job.fileName">{{
+          job.fileName
+        }}</strong>
+        <div class="collection-meta">
+          <span>{{ job.printerName }}</span>
+          <span
+            >Ready {{ formatDate(job.completedAt || job.submittedAt) }}</span
+          >
+        </div>
+      </div>
+
+      <div class="topup-error" *ngIf="collectionError" role="alert">
+        {{ collectionError }}
+      </div>
+    </div>
+
+    <footer class="modal-footer">
+      <button
+        type="button"
+        class="secondary-btn"
+        [disabled]="collectingJobId !== null"
+        (click)="closeCollectionConfirmation()"
+      >
+        Not yet
+      </button>
+      <button
+        type="button"
+        class="confirm-topup-btn"
+        [disabled]="collectingJobId !== null"
+        (click)="confirmCollection()"
+      >
+        <span class="spinner" *ngIf="collectingJobId === job.jobId"></span>
+        {{ collectingJobId === job.jobId ? "Confirming..." : "Yes, collected" }}
+      </button>
+    </footer>
+  </section>
+</div>

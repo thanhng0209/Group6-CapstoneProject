@@ -28,6 +28,9 @@ public class UserDashboardResponse {
     // Completed/failed print jobs.
     private List<PrintJobSummary> printHistory;
 
+    // Completed print jobs awaiting user collection.
+    private List<PrintJobSummary> pendingCollectionJobs;
+
     @Getter
     @Builder
     @AllArgsConstructor
@@ -42,6 +45,8 @@ public class UserDashboardResponse {
         private String status;
 
         private String submittedAt;
+
+        private String completedAt;
 
         private int progressPercent;
 

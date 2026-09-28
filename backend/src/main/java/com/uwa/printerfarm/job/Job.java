@@ -53,6 +53,9 @@ public class Job {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "collected_at")
+    private Instant collectedAt;
+
     protected Job() {
         // required by JPA
     }
@@ -139,6 +142,14 @@ public class Job {
 
     public Instant getCompletedAt() {
         return completedAt;
+    }
+
+    public Instant getCollectedAt() {
+        return collectedAt;
+    }
+
+    public void setCollectedAt(Instant collectedAt) {
+        this.collectedAt = collectedAt;
     }
 
     void setCompletedAt(Instant completedAt) {
