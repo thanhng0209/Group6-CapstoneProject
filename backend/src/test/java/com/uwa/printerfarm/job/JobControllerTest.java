@@ -173,7 +173,7 @@ class JobControllerTest {
 
     @Test
     void cancelJobWithinWindowAutoRefunds() throws Exception {
-        when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
                 when(refundService.cancelAndRefund(eq(sampleJob), any())).thenAnswer(invocation -> {
             sampleJob.setStatus(JobStatus.CANCELLED);
                         return Optional.empty();
@@ -192,7 +192,7 @@ class JobControllerTest {
 
     @Test
     void cancelJobOutsideWindowRequiresApproval() throws Exception {
-        when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
                 when(refundService.cancelAndRefund(eq(sampleJob), any())).thenAnswer(invocation -> {
             sampleJob.setStatus(JobStatus.CANCELLED);
                         return Optional.of(new RefundRequest(
@@ -212,7 +212,7 @@ class JobControllerTest {
 
     @Test
     void cancelNonExistentJobReturnsNotFound() throws Exception {
-        when(jobRepository.findById(999L)).thenReturn(Optional.empty());
+        when(jobRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/jobs/999/cancel").with(csrf()))
                 .andExpect(status().isNotFound())
@@ -227,7 +227,7 @@ class JobControllerTest {
                 new BigDecimal("10.00"), new BigDecimal("20.00"));
         otherUserJob.assignId(202L);
 
-        when(jobRepository.findById(202L)).thenReturn(Optional.of(otherUserJob));
+        when(jobRepository.findByIdForUpdate(202L)).thenReturn(Optional.of(otherUserJob));
 
         mockMvc.perform(post("/api/jobs/202/cancel").with(csrf()))
                 .andExpect(status().isForbidden())
@@ -238,13 +238,82 @@ class JobControllerTest {
 
     @Test
     void cancelPrintingJobThrowsInvalidJobStatusTransitionException() throws Exception {
-        when(jobRepository.findById(101L)).thenReturn(Optional.of(sampleJob));
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
         when(jobLifecycleService.cancel(eq(sampleJob), any()))
                 .thenThrow(new InvalidJobStatusTransitionException(JobStatus.PRINTING, JobStatus.CANCELLED));
 
         mockMvc.perform(post("/api/jobs/101/cancel").with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+    }
+
+    @Test
+    void pausePrintingJobSucceeds() throws Exception {
+        sampleJob.setStatus(JobStatus.PRINTING);
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
+        when(mockPrinterDispatcher.pauseJob(sampleJob)).thenAnswer(invocation -> {
+            sampleJob.setStatus(JobStatus.PAUSED);
+            return sampleJob;
+        });
+
+        mockMvc.perform(post("/api/jobs/101/pause").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAUSED"));
+
+        verify(mockPrinterDispatcher).pauseJob(sampleJob);
+    }
+
+    @Test
+    void pauseJobNotCurrentlyPrintingReturnsBadRequest() throws Exception {
+        sampleJob.setStatus(JobStatus.QUEUED);
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
+
+        mockMvc.perform(post("/api/jobs/101/pause").with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+
+        verify(mockPrinterDispatcher, never()).pauseJob(any());
+    }
+
+    @Test
+    void resumePausedJobSucceeds() throws Exception {
+        sampleJob.setStatus(JobStatus.PAUSED);
+        when(jobRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(sampleJob));
+        when(mockPrinterDispatcher.resumeJob(sampleJob)).thenAnswer(invocation -> {
+            sampleJob.setStatus(JobStatus.PRINTING);
+            return sampleJob;
+        });
+
+        mockMvc.perform(post("/api/jobs/101/resume").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PRINTING"));
+
+        verify(mockPrinterDispatcher).resumeJob(sampleJob);
+    }
+
+    @Test
+    void pauseNonExistentJobReturnsNotFound() throws Exception {
+        when(jobRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/jobs/999/pause").with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("JOB_NOT_FOUND"));
+    }
+
+    @Test
+    void pauseJobBelongingToAnotherStudentReturnsForbidden() throws Exception {
+        Job otherUserJob = new Job("99887766", "prusa-xl-1", "other.gcode", "PLA",
+                new BigDecimal("10.00"), new BigDecimal("20.00"));
+        otherUserJob.assignId(202L);
+        otherUserJob.setStatus(JobStatus.PRINTING);
+
+        when(jobRepository.findByIdForUpdate(202L)).thenReturn(Optional.of(otherUserJob));
+
+        mockMvc.perform(post("/api/jobs/202/pause").with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        verify(mockPrinterDispatcher, never()).pauseJob(any());
     }
 
     @Test
