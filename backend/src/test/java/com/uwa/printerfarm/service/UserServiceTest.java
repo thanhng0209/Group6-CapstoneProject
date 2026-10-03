@@ -40,8 +40,8 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
-        @Mock
-        private JobRepository jobRepository;
+    @Mock
+    private JobRepository jobRepository;
 
     @Mock
     private JwtUtil jwtUtil;
