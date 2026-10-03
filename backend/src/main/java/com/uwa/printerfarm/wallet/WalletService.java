@@ -45,6 +45,7 @@ public class WalletService {
 
     @Transactional
     public BigDecimal debit(String ownerUniId, BigDecimal amount) {
+        requirePositiveAmount(amount);
         User user = getOrCreateUser(ownerUniId, true);
         long amountCents = toCents(amount);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
@@ -63,6 +64,7 @@ public class WalletService {
 
     @Transactional
     public BigDecimal credit(String ownerUniId, BigDecimal amount) {
+        requirePositiveAmount(amount);
         User user = getOrCreateUser(ownerUniId, true);
         long amountCents = toCents(amount);
         long currentCents = user.getBalanceCents() != null ? user.getBalanceCents() : 0L;
@@ -101,6 +103,12 @@ public class WalletService {
                             .build();
                     return userRepository.save(newUser);
                 });
+    }
+
+    private void requirePositiveAmount(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new InvalidWalletAmountException(amount);
+        }
     }
 
     private long toCents(BigDecimal amount) {

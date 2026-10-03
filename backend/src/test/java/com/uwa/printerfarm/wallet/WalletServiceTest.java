@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -97,5 +98,39 @@ class WalletServiceTest {
                 .isInstanceOf(InsufficientBalanceException.class);
 
         assertThat(testUser.getBalanceCents()).isEqualTo(5000L);
+    }
+
+    @Test
+    void debitWithZeroAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.debit("22345678", BigDecimal.ZERO))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void debitWithNegativeAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.debit("22345678", new BigDecimal("-5.00")))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void creditWithZeroAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.credit("22345678", BigDecimal.ZERO))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(ledgerService);
+    }
+
+    @Test
+    void creditWithNegativeAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.credit("22345678", new BigDecimal("-10.00")))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(ledgerService);
     }
 }
