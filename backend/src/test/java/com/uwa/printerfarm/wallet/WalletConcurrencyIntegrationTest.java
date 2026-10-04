@@ -40,6 +40,9 @@ class WalletConcurrencyIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Autowired
     private WalletService walletService;
 
     @BeforeEach
@@ -56,6 +59,7 @@ class WalletConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        transactionRepository.deleteAll(transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(TEST_UNI_ID));
         userRepository.findByUniId(TEST_UNI_ID).ifPresent(userRepository::delete);
     }
 
