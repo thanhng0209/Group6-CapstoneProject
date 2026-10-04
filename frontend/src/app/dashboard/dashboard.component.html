@@ -295,7 +295,7 @@
                   *ngIf="isEligibleForPause(job)"
                   type="button"
                   class="cancel-btn"
-                  [disabled]="controllingJobId === job.jobId"
+                  [disabled]="isJobActionInFlight"
                   (click)="pauseJob(job)"
                 >
                   {{ controllingJobId === job.jobId ? "..." : "Pause" }}
@@ -305,7 +305,7 @@
                   *ngIf="isEligibleForResume(job)"
                   type="button"
                   class="cancel-btn"
-                  [disabled]="controllingJobId === job.jobId"
+                  [disabled]="isJobActionInFlight"
                   (click)="resumeJob(job)"
                 >
                   {{ controllingJobId === job.jobId ? "..." : "Resume" }}
@@ -315,7 +315,7 @@
                   *ngIf="isEligibleForCancel(job)"
                   type="button"
                   class="cancel-btn"
-                  [disabled]="cancellingJobId === job.jobId"
+                  [disabled]="isJobActionInFlight"
                   (click)="cancelJob(job)"
                 >
                   <span *ngIf="cancellingJobId !== job.jobId"> Cancel </span>
