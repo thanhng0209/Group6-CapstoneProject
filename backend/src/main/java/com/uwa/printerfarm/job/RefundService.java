@@ -69,7 +69,7 @@ public class RefundService {
     }
 
     private void refund(String ownerUniId, Long jobId, BigDecimal amount) {
-        BigDecimal balanceAfter = walletService.credit(ownerUniId, amount);
+        BigDecimal balanceAfter = walletService.creditWithoutLedger(ownerUniId, amount);
         ledgerService.record(ownerUniId, jobId, TransactionType.REFUND, amount, balanceAfter,
                 "Refund for cancelled job " + jobId);
     }
