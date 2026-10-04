@@ -40,5 +40,7 @@ printerfarm:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:this-is-a-placeholder-secret-change-me-before-deploying-1234567890}
+    # Intentionally no default: set JWT_SECRET (32+ chars) for any shared/deployed
+    # environment. When unset, JwtUtil generates a random key at startup.
+    secret: ${JWT_SECRET:}
     expiration-ms: 86400000
