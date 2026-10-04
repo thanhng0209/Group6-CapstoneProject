@@ -119,7 +119,7 @@ class RefundServiceTest {
                 .uniId("22345678")
                 .balanceCents(5000L)
                 .build();
-        when(userRepo.findByUniId("22345678")).thenReturn(Optional.of(user));
+        when(userRepo.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(user));
 
         WalletService realWalletService = new WalletService(userRepo, ledgerService, new BigDecimal("50.00"));
         RefundService serviceWithRealWallet = new RefundService(jobLifecycleService, realWalletService, ledgerService, refundRequestRepository);

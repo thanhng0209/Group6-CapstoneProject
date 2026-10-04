@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,7 +68,7 @@ class WalletServiceTest {
 
     @Test
     void debitReducesBalanceAndSavesToDatabase() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.debit("22345678", new BigDecimal("6.20"));
 
@@ -78,7 +79,7 @@ class WalletServiceTest {
 
     @Test
     void creditIncreasesBalanceAndSavesToDatabase() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"));
 
@@ -91,7 +92,7 @@ class WalletServiceTest {
 
     @Test
     void creditWithoutLedgerIncreasesBalanceWithoutRecordingLedgerTransaction() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.creditWithoutLedger("22345678", new BigDecimal("10.00"));
 
@@ -103,7 +104,7 @@ class WalletServiceTest {
 
     @Test
     void creditWithCustomTransactionDetailsRecordsSuppliedTypeAndJobId() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"),
                 TransactionType.REFUND, 42L, "Custom refund transaction");
@@ -117,11 +118,45 @@ class WalletServiceTest {
 
     @Test
     void debitBeyondBalanceThrowsAndLeavesBalanceUnchanged() {
-        when(userRepository.findByUniId("22345678")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
         assertThatThrownBy(() -> walletService.debit("22345678", new BigDecimal("999.00")))
                 .isInstanceOf(InsufficientBalanceException.class);
 
         assertThat(testUser.getBalanceCents()).isEqualTo(5000L);
+    }
+
+    @Test
+    void debitWithZeroAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.debit("22345678", BigDecimal.ZERO))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void debitWithNegativeAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.debit("22345678", new BigDecimal("-5.00")))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void creditWithZeroAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.credit("22345678", BigDecimal.ZERO))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(ledgerService);
+    }
+
+    @Test
+    void creditWithNegativeAmountIsRejectedBeforeTouchingBalance() {
+        assertThatThrownBy(() -> walletService.credit("22345678", new BigDecimal("-10.00")))
+                .isInstanceOf(InvalidWalletAmountException.class);
+
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(ledgerService);
     }
 }
