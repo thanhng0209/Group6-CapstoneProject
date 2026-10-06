@@ -37,3 +37,23 @@ export interface UserDashboard {
   printHistory: PrintJobSummary[];
   pendingCollectionJobs: PrintJobSummary[];
 }
+
+export type WalletTransactionType = "TOPUP" | "DEBIT" | "REFUND";
+
+export interface WalletTransaction {
+  id: number;
+  jobId: number | null;
+  type: WalletTransactionType;
+  amount: number;
+  balanceAfter: number;
+  occurredAt: string;
+  description: string | null;
+}
+
+export interface WalletTransactionPage {
+  transactions: WalletTransaction[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
