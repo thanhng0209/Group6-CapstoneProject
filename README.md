@@ -78,6 +78,7 @@ A comprehensive, full-stack 3D Printer Farm Management and Scheduling platform d
   - Custom dollar amount input with instant client-side validation (`> $0.00`).
   - Dynamic **Projected Balance Preview** displaying what the new balance will be before confirming.
 - **Immutable Transaction Ledger**: Every credit, print deduction, and refund is permanently recorded in PostgreSQL with `TransactionType.TOPUP`, `DEBIT`, or `REFUND` for comprehensive financial auditing.
+- **Transaction History**: Students can review their newest wallet top-ups, print charges, and refunds, including transaction dates and the balance after each event.
 
 ### 4. G-Code Validation & Hardware Compatibility
 - **PrusaSlicer ASCII Parser**: Fast streaming extraction of metadata comments: printer profile, build dimensions (X, Y, Z), layer height, nozzle size, filament type, extruder/bed temperatures, and estimated duration.
@@ -252,6 +253,7 @@ npm run build
 | **Auth** | `POST` | `/api/auth/login` | Authenticate with UNI ID & password, returns JWT | None |
 | **User** | `GET` | `/api/user/dashboard` | Returns current user profile and balance | Student / Staff / Admin |
 | **Wallet** | `GET` | `/api/wallet/{uniId}/balance` | Returns dollar balance for specified user | Self or Admin |
+| **Wallet** | `GET` | `/api/wallet/{uniId}/transactions?page=0&size=20` | Returns newest-first paginated wallet transactions | Self or Admin |
 | **Wallet** | `POST` | `/api/wallet/{uniId}/credit` | Top up / credit dollar balance to user account | Self or Admin |
 | **Wallet** | `POST` | `/api/wallet/{uniId}/debit` | Deduct dollar balance from user account | Admin |
 | **Printers** | `GET` | `/api/printers` | Get full physical printer inventory & telemetry | Public |

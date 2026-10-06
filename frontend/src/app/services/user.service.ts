@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UserDashboard } from '../models/user.model';
+import { UserDashboard, WalletTransactionPage } from '../models/user.model';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -16,5 +16,12 @@ export class UserService {
 
   topUpBalance(uniId: string, amount: number): Observable<any> {
     return this.http.post<any>(`${API_BASE}/wallet/${encodeURIComponent(uniId)}/credit?amount=${amount}`, {});
+  }
+
+  getTransactionHistory(uniId: string, page = 0, size = 20): Observable<WalletTransactionPage> {
+    return this.http.get<WalletTransactionPage>(
+      `${API_BASE}/wallet/${encodeURIComponent(uniId)}/transactions`,
+      { params: { page, size } },
+    );
   }
 }

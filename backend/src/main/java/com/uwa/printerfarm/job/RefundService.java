@@ -1,7 +1,5 @@
 package com.uwa.printerfarm.job;
 
-import com.uwa.printerfarm.wallet.TransactionLedgerService;
-import com.uwa.printerfarm.wallet.TransactionType;
 import com.uwa.printerfarm.wallet.WalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,16 +19,13 @@ public class RefundService {
 
     private final JobLifecycleService jobLifecycleService;
     private final WalletService walletService;
-    private final TransactionLedgerService ledgerService;
     private final RefundRequestRepository refundRequestRepository;
 
     public RefundService(JobLifecycleService jobLifecycleService,
                          WalletService walletService,
-                         TransactionLedgerService ledgerService,
                          RefundRequestRepository refundRequestRepository) {
         this.jobLifecycleService = jobLifecycleService;
         this.walletService = walletService;
-        this.ledgerService = ledgerService;
         this.refundRequestRepository = refundRequestRepository;
     }
 
@@ -69,9 +64,7 @@ public class RefundService {
     }
 
     private void refund(String ownerUniId, Long jobId, BigDecimal amount) {
-        BigDecimal balanceAfter = walletService.credit(ownerUniId, amount);
-        ledgerService.record(ownerUniId, jobId, TransactionType.REFUND, amount, balanceAfter,
-                "Refund for cancelled job " + jobId);
+        walletService.creditRefund(ownerUniId, amount, jobId);
     }
 
     private RefundRequest requireRequestForDecision(long requestId) {

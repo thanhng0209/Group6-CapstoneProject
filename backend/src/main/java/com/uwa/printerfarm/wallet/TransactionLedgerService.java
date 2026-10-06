@@ -1,5 +1,7 @@
 package com.uwa.printerfarm.wallet;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,10 @@ public class TransactionLedgerService {
 
     public List<Transaction> history(String ownerUniId) {
         return transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(ownerUniId);
+    }
+
+    public Page<Transaction> history(String ownerUniId, Pageable pageable) {
+        return transactionRepository.findByOwnerUniId(ownerUniId, pageable);
     }
 
     public List<Transaction> all() {
