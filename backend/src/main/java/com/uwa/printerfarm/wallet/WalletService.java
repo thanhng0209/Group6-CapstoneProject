@@ -64,6 +64,16 @@ public class WalletService {
 
     @Transactional
     public BigDecimal credit(String ownerUniId, BigDecimal amount) {
+        return credit(ownerUniId, amount, TransactionType.TOPUP, null, "Wallet balance top-up");
+    }
+
+    @Transactional
+    public BigDecimal creditRefund(String ownerUniId, BigDecimal amount, Long jobId) {
+        return credit(ownerUniId, amount, TransactionType.REFUND, jobId, "Refund for cancelled job " + jobId);
+    }
+
+    private BigDecimal credit(String ownerUniId, BigDecimal amount, TransactionType type,
+                              Long jobId, String description) {
         requirePositiveAmount(amount);
         User user = getOrCreateUser(ownerUniId, true);
         long amountCents = toCents(amount);
@@ -75,7 +85,7 @@ public class WalletService {
 
         BigDecimal balanceAfter = toDollars(updatedCents);
         if (transactionLedgerService != null) {
-            transactionLedgerService.record(ownerUniId, null, TransactionType.TOPUP, amount, balanceAfter, "Wallet balance top-up");
+            transactionLedgerService.record(ownerUniId, jobId, type, amount, balanceAfter, description);
         }
 
         return balanceAfter;

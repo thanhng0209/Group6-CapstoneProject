@@ -1,7 +1,5 @@
 package com.uwa.printerfarm.job;
 
-import com.uwa.printerfarm.wallet.TransactionLedgerService;
-import com.uwa.printerfarm.wallet.TransactionType;
 import com.uwa.printerfarm.wallet.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,16 +31,13 @@ class RefundServiceTest {
     private WalletService walletService;
 
     @Mock
-    private TransactionLedgerService ledgerService;
-
-    @Mock
     private RefundRequestRepository refundRequestRepository;
 
     private RefundService refundService;
 
     @BeforeEach
     void setUp() {
-        refundService = new RefundService(jobLifecycleService, walletService, ledgerService, refundRequestRepository);
+        refundService = new RefundService(jobLifecycleService, walletService, refundRequestRepository);
         lenient().when(refundRequestRepository.save(any(RefundRequest.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -60,9 +55,7 @@ class RefundServiceTest {
 
         assertThat(pending).isEmpty();
         assertThat(job.getStatus()).isEqualTo(JobStatus.CANCELLED);
-        verify(walletService).credit("22345678", new BigDecimal("6.20"));
-        verify(ledgerService).record(eq("22345678"), eq(job.getId()), eq(TransactionType.REFUND),
-                eq(new BigDecimal("6.20")), any(), any());
+        verify(walletService).creditRefund("22345678", new BigDecimal("6.20"), job.getId());
     }
 
     @Test
@@ -75,7 +68,7 @@ class RefundServiceTest {
         assertThat(pending).isPresent();
         assertThat(pending.get().getStatus()).isEqualTo(RefundStatus.PENDING_APPROVAL);
         verify(refundRequestRepository).save(any(RefundRequest.class));
-        verify(walletService, never()).credit(any(), any());
+        verify(walletService, never()).creditRefund(any(), any(), any());
     }
 
     @Test
@@ -88,9 +81,7 @@ class RefundServiceTest {
 
         assertThat(approved.getStatus()).isEqualTo(RefundStatus.APPROVED);
         verify(refundRequestRepository).save(request);
-        verify(walletService).credit("22345678", new BigDecimal("6.20"));
-        verify(ledgerService).record(eq("22345678"), eq(job.getId()), eq(TransactionType.REFUND),
-                eq(new BigDecimal("6.20")), any(), any());
+        verify(walletService).creditRefund("22345678", new BigDecimal("6.20"), job.getId());
     }
 
     @Test
@@ -103,7 +94,7 @@ class RefundServiceTest {
 
         assertThat(rejected.getStatus()).isEqualTo(RefundStatus.REJECTED);
         verify(refundRequestRepository).save(request);
-        verify(walletService, never()).credit(any(), any());
+        verify(walletService, never()).creditRefund(any(), any(), any());
     }
 
     @Test
