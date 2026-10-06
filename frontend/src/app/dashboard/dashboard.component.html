@@ -51,11 +51,14 @@
         <span>Pending Collection</span>
       </a>
 
-      <div class="sidebar-link disabled">
+      <a
+        routerLink="/transactions"
+        routerLinkActive="active"
+        class="sidebar-link"
+      >
         <span class="nav-icon">$</span>
         <span>Transaction History</span>
-        <span class="coming-soon">Soon</span>
-      </div>
+      </a>
 
       <a
         *ngIf="dashboard.role === 'ADMIN'"
