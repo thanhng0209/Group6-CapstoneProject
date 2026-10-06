@@ -1,0 +1,234 @@
+<div class="dashboard-shell" *ngIf="!isLoading && dashboard">
+  <aside class="dashboard-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+          <line x1="12" y1="22" x2="12" y2="15.5" />
+          <polyline points="22 8.5 12 15.5 2 8.5" />
+        </svg>
+      </div>
+      <div><strong>UWA</strong><span>3D PRINT FARM</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="sidebar-link"
+      >
+        <span class="nav-icon">▦</span><span>Summary</span>
+      </a>
+      <a routerLink="/submit" class="sidebar-link">
+        <span class="nav-icon">＋</span><span>Submit Print Job</span>
+      </a>
+      <a routerLink="/dashboard" class="sidebar-link">
+        <span class="nav-icon">▤</span><span>My Print Jobs</span>
+      </a>
+      <a
+        routerLink="/pending-collection"
+        routerLinkActive="active"
+        class="sidebar-link"
+      >
+        <span class="nav-icon">✓</span><span>Pending Collection</span>
+      </a>
+      <a
+        routerLink="/transactions"
+        routerLinkActive="active"
+        class="sidebar-link"
+      >
+        <span class="nav-icon">$</span><span>Transaction History</span>
+      </a>
+      <a
+        *ngIf="dashboard.role === 'ADMIN'"
+        routerLink="/admin"
+        class="sidebar-link admin-link"
+      >
+        <span class="nav-icon">⚙</span><span>Farm Manager</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          {{ dashboard.fullName.charAt(0).toUpperCase() }}
+        </div>
+        <div class="user-details">
+          <strong>{{ dashboard.fullName }}</strong>
+          <span>{{ dashboard.uniId }}</span>
+        </div>
+      </div>
+      <button type="button" class="sidebar-logout" (click)="logout()">
+        <span>↪</span> Sign out
+      </button>
+    </div>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="dashboard-topbar">
+      <div>
+        <div class="page-label">STUDENT DASHBOARD</div>
+        <h1>Transaction History</h1>
+      </div>
+      <div class="topbar-actions">
+        <span class="role-badge">{{ dashboard.role }}</span>
+        <a routerLink="/dashboard" class="submit-nav-btn">Back to Dashboard</a>
+      </div>
+    </header>
+
+    <section class="summary-grid transaction-summary">
+      <article class="summary-card balance-summary">
+        <div class="summary-card-header">
+          <span>AVAILABLE BALANCE</span>
+          <span class="summary-icon">$</span>
+        </div>
+        <strong>${{ dashboard.balance.toFixed(2) }}</strong>
+        <span class="summary-description">Current wallet balance</span>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card-header">
+          <span>RECORDED TRANSACTIONS</span>
+          <span class="summary-icon">▤</span>
+        </div>
+        <strong>{{ totalElements }}</strong>
+        <span class="summary-description">Wallet activity on record</span>
+      </article>
+    </section>
+
+    <div class="feedback-banner error" *ngIf="errorMessage">
+      <span class="feedback-icon">⚠</span>
+      <span class="feedback-text">{{ errorMessage }}</span>
+      <button
+        type="button"
+        class="refresh-btn"
+        (click)="loadTransactions(page)"
+        [disabled]="isLoadingTransactions"
+      >
+        Retry
+      </button>
+    </div>
+
+    <section class="jobs-section">
+      <div class="section-title-bar transaction-title-bar">
+        <div>
+          <h2>Wallet activity</h2>
+          <div class="live-indicator-wrapper">
+            <span class="live-text">Newest transactions appear first</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="state-container transaction-loading"
+        *ngIf="isLoadingTransactions"
+      >
+        <span class="main-spinner"></span>
+        <p class="state-message">Loading transactions...</p>
+      </div>
+
+      <div
+        class="empty-state-box"
+        *ngIf="!isLoadingTransactions && !errorMessage && totalElements === 0"
+      >
+        <div class="empty-icon">$</div>
+        <h3>No transactions yet</h3>
+        <p>Wallet top-ups, print charges, and refunds will appear here.</p>
+        <a routerLink="/dashboard" class="submit-nav-btn empty-action">
+          Return to Dashboard
+        </a>
+      </div>
+
+      <div
+        class="table-responsive"
+        *ngIf="!isLoadingTransactions && transactions.length > 0"
+      >
+        <table class="jobs-table transactions-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Transaction</th>
+              <th>Description</th>
+              <th>Job</th>
+              <th class="text-right">Amount</th>
+              <th class="text-right">Balance after</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let transaction of transactions">
+              <td class="col-date">{{ formatDate(transaction.occurredAt) }}</td>
+              <td>
+                <span
+                  class="transaction-type"
+                  [ngClass]="'transaction-type-' + transaction.type.toLowerCase()"
+                >
+                  {{ transactionLabel(transaction.type) }}
+                </span>
+              </td>
+              <td class="transaction-description">
+                {{ transaction.description || "—" }}
+              </td>
+              <td class="font-mono">
+                {{ transaction.jobId === null ? "—" : "#" + transaction.jobId }}
+              </td>
+              <td
+                class="text-right transaction-amount"
+                [class.transaction-debit]="transaction.type === 'DEBIT'"
+                [class.transaction-credit]="transaction.type !== 'DEBIT'"
+              >
+                {{ signedAmount(transaction) }}
+              </td>
+              <td class="text-right font-mono">
+                ${{ transaction.balanceAfter.toFixed(2) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <nav
+        class="transaction-pagination"
+        *ngIf="totalPages > 1 && !isLoadingTransactions"
+        aria-label="Transaction history pages"
+      >
+        <button
+          type="button"
+          class="refresh-btn"
+          [disabled]="page === 0 || isLoadingTransactions"
+          (click)="loadTransactions(page - 1)"
+        >
+          Previous
+        </button>
+        <span>Page {{ page + 1 }} of {{ totalPages }}</span>
+        <button
+          type="button"
+          class="refresh-btn"
+          [disabled]="page + 1 >= totalPages || isLoadingTransactions"
+          (click)="loadTransactions(page + 1)"
+        >
+          Next
+        </button>
+      </nav>
+    </section>
+  </main>
+</div>
+
+<div class="state-container" *ngIf="isLoading">
+  <span class="main-spinner"></span>
+  <p class="state-message">Loading transaction history...</p>
+</div>
+
+<div
+  class="state-container transaction-fatal-error"
+  *ngIf="!isLoading && !dashboard"
+>
+  <p class="state-message">{{ errorMessage }}</p>
+  <button type="button" class="retry-btn" (click)="loadDashboard()">
+    Retry
+  </button>
+</div>
