@@ -115,6 +115,7 @@ A comprehensive, full-stack 3D Printer Farm Management and Scheduling platform d
 
 ### 9. Admin Console & Financial Analytics
 - **Fleet Monitoring**: Real-time breakdown of printer availability and status distribution.
+- **Usage Trends**: Daily filament consumption, charges and refunds over a selectable 7, 30 or 90 day range.
 - **Financial Audit Metrics**: High-level financial reporting displaying total charged, total refunded, and net lab revenue.
 - **Filament Consumption Analytics**: Summarizes total filament consumption (grams) grouped by polymer material.
 - **Manual Refund Management**: Administrative queue for inspecting, approving, or rejecting disputed refunds.
@@ -238,6 +239,14 @@ cd backend
 mvn test
 ```
 The suite covers unit tests, controller security/validation tests, and integration tests for wallet and job concurrency and refund ledger behaviour. All tests should pass with 0 failures and 0 errors.
+
+### Running Frontend Unit Tests
+The frontend tests use Karma and Jasmine and need Google Chrome installed:
+```bash
+cd frontend
+npm run test:ci
+```
+`npm test` runs the same suite in a watching Chrome window. If Chrome is not on your `PATH`, set `CHROME_BIN` to its executable.
 
 ### Compiling Frontend Production Bundle
 Verify TypeScript type checking and Angular AOT template compilation:

@@ -82,7 +82,7 @@ You can only confirm collection for your own completed jobs.
 
 ## Farm manager (admin) guide
 
-Click **Farm Manager** in the sidebar (admins only). The page has three tabs.
+Click **Farm Manager** in the sidebar (admins only). The page has four tabs.
 
 ### Farm Status
 - Printer fleet cards: status (`IDLE`, `PRINTING`, `MAINTENANCE`), loaded material and per-printer activity.
@@ -96,6 +96,13 @@ Click **Farm Manager** in the sidebar (admins only). The page has three tabs.
 - Totals: **charged**, **refunded** and **net lab revenue**.
 - Filament consumption in grams, grouped by material.
 - **Pending Refund Requests:** requests from students who cancelled outside the automatic window. Review each one and click **Approve** (credits the wallet and records a `REFUND` entry) or **Reject** (no credit). A request can only be decided once.
+
+### Usage Trends
+- Shows how usage and money change over time, one bar per day.
+- Pick **7, 30 or 90 days** with the buttons at the top right.
+- Summary cards give the totals for the range: filament used, amount charged, amount refunded and number of jobs.
+- Two charts: **filament used per day** (grams) and **charged vs refunded per day** (dollars). Hover a bar to see the exact figures for that day.
+- Days with no jobs are shown as empty bars, so gaps are visible. If the whole range is empty a note says so.
 
 ---
 

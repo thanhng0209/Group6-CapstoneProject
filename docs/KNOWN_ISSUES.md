@@ -30,12 +30,12 @@ These are placeholder values that work today but have not been confirmed by the 
 
 ## Resolved (for reference)
 
-JWT secret fallback, wallet amount validation, double ledger entry on refunds, wallet concurrency control, cancel fallback status and pause/resume concurrency have all been fixed and merged.
+JWT secret fallback, wallet amount validation, double ledger entry on refunds, wallet concurrency control, cancel fallback status and pause/resume concurrency and the admin Usage Trends tab have all been fixed or delivered and merged.
 
 ## Future work
 
 - Connect the dispatcher to Prusa Connect / PrusaLink for real printer status, job dispatch and camera views.
 - Add a real payment or voucher flow for wallet top-ups.
-- Show long-term printer usage trends and filament consumption over time to admins.
+- Extend the admin Usage Trends tab with per-printer and per-material breakdowns and CSV export.
 - Support more slicers and online slicing.
 - Move user email addresses into the user profile and configure production SMTP.
