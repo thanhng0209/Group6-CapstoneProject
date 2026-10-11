@@ -126,7 +126,7 @@ A comprehensive, full-stack 3D Printer Farm Management and Scheduling platform d
 
 | Layer | Technologies |
 |---|---|
-| **Backend** | Java 17, Spring Boot 3.3.3 (Web, Security, Data JPA), Flyway Migration, Lombok, Swagger/OpenAPI |
+| **Backend** | Java 17, Spring Boot 3.3.4 (Web, Security, Data JPA), Flyway Migration, Lombok, Swagger/OpenAPI |
 | **Frontend** | Angular 18 (Standalone Components), TypeScript, RxJS, Vanilla CSS |
 | **Database** | PostgreSQL 16 (production/dev), H2 Database (in-memory unit test suite) |
 | **Container** | Docker, Docker Compose |
@@ -298,3 +298,5 @@ Setup instructions are in [Step-by-Step Setup Guide](#step-by-step-setup-guide-w
 ## Use of Generative AI
 
 AI tools (Claude Code, GitHub Copilot and Cursor) were used during development for code review, drafting fixes and tests, and drafting issue and PR text. Every AI-drafted change was run against the test suite and went through a pull request before merging. See [docs/AI_USAGE.md](docs/AI_USAGE.md) for details and examples of AI output that was corrected or rejected.
+
+

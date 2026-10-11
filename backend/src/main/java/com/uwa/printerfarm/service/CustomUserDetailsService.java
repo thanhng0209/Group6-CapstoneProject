@@ -17,7 +17,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     /**
      * Called in two places:
      *  1. At login, with what the user typed (after LoginIdentifier cleanup):
-     *     an 8-digit uni_id, or a staff email such as lab.coordinator@uwa.edu.au.
+     *     an 8-digit uni_id or a staff email such as lab.coordinator@uwa.edu.au.
      *  2. By JwtAuthFilter on every request, with the JWT subject (always the uni_id).
      *
      * So: try uni_id first (the existing behaviour), then fall back to the email column.
