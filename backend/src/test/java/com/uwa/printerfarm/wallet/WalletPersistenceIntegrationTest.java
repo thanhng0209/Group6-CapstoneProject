@@ -8,8 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -26,6 +31,9 @@ class WalletPersistenceIntegrationTest {
 
     @Autowired
     private WalletService walletService;
+
+    @Autowired
+    private TransactionLedgerService transactionLedgerService;
 
     private static final String TEST_UNI_ID = "11223344";
 
@@ -87,5 +95,49 @@ class WalletPersistenceIntegrationTest {
         assertThat(txs).hasSize(1);
         assertThat(txs.get(0).getType()).isEqualTo(TransactionType.TOPUP);
         assertThat(txs.get(0).getAmount()).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    void transactionHistoryIsPagedNewestFirstAndScopedToTheOwner() {
+        userRepository.save(User.builder()
+                .uniId("99887766")
+                .email("99887766@student.uwa.edu.au")
+                .fullName("Other Test Student")
+                .passwordHash("hashed")
+                .role(Role.STUDENT)
+                .balanceCents(5000L)
+                .build());
+        transactionRepository.saveAll(List.of(
+                new Transaction(TEST_UNI_ID, null, TransactionType.TOPUP,
+                        new BigDecimal("10.00"), new BigDecimal("60.00"),
+                        Instant.parse("2026-01-01T10:00:00Z"), "First top-up"),
+                new Transaction(TEST_UNI_ID, null, TransactionType.DEBIT,
+                        new BigDecimal("6.00"), new BigDecimal("54.00"),
+                        Instant.parse("2026-01-02T10:00:00Z"), "Print charge"),
+                new Transaction("99887766", null, TransactionType.TOPUP,
+                        new BigDecimal("20.00"), new BigDecimal("70.00"),
+                        Instant.parse("2026-01-03T10:00:00Z"), "Other user's top-up")
+        ));
+
+        Page<Transaction> firstPage = transactionLedgerService.history(
+                TEST_UNI_ID,
+                PageRequest.of(0, 1, Sort.by(
+                        Sort.Order.desc("occurredAt"),
+                        Sort.Order.desc("id")
+                ))
+        );
+        Page<Transaction> secondPage = transactionLedgerService.history(
+                TEST_UNI_ID,
+                PageRequest.of(1, 1, Sort.by(
+                        Sort.Order.desc("occurredAt"),
+                        Sort.Order.desc("id")
+                ))
+        );
+
+        assertThat(firstPage.getTotalElements()).isEqualTo(2);
+        assertThat(firstPage.getContent()).extracting(Transaction::getDescription)
+                .containsExactly("Print charge");
+        assertThat(secondPage.getContent()).extracting(Transaction::getDescription)
+                .containsExactly("First top-up");
     }
 }
