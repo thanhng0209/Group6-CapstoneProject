@@ -2,12 +2,18 @@ package com.uwa.printerfarm.wallet;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -16,10 +22,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/wallet")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Wallet", description = "Endpoints for managing student wallet balances and deductions")
 public class WalletController {
 
     private final WalletService walletService;
+    private final TransactionLedgerService transactionLedgerService;
 
     @Operation(summary = "Get user wallet balance", description = "Returns the balance in dollars for the specified uniId")
     @GetMapping("/{uniId}/balance")
@@ -33,6 +41,26 @@ public class WalletController {
                 "uniId", uniId,
                 "balance", balance
         ));
+    }
+
+    @Operation(summary = "Get wallet transaction history")
+    @GetMapping("/{uniId}/transactions")
+    public ResponseEntity<TransactionHistoryResponse> getTransactions(
+            @PathVariable String uniId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            Authentication authentication) {
+        if (!isAdmin(authentication) && !uniId.equals(authentication.getName())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("id"))
+        );
+        Page<Transaction> transactions = transactionLedgerService.history(uniId, pageRequest);
+        return ResponseEntity.ok(TransactionHistoryResponse.from(transactions));
     }
 
     @Operation(summary = "Deduct balance from user wallet", description = "Deducts the specified dollar amount (via request body or ?amount=...) and persists to PostgreSQL")

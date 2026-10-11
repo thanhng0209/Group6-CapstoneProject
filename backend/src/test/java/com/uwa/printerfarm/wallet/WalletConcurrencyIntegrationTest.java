@@ -47,6 +47,7 @@ class WalletConcurrencyIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        deleteTestData();
         userRepository.save(User.builder()
                 .uniId(TEST_UNI_ID)
                 .email("55667788@student.uwa.edu.au")
@@ -59,7 +60,12 @@ class WalletConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        transactionRepository.deleteAll(transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(TEST_UNI_ID));
+        deleteTestData();
+    }
+
+    private void deleteTestData() {
+        transactionRepository.findByOwnerUniIdOrderByOccurredAtDesc(TEST_UNI_ID)
+                .forEach(transactionRepository::delete);
         userRepository.findByUniId(TEST_UNI_ID).ifPresent(userRepository::delete);
     }
 

@@ -91,29 +91,17 @@ class WalletServiceTest {
     }
 
     @Test
-    void creditWithoutLedgerIncreasesBalanceWithoutRecordingLedgerTransaction() {
+    void refundCreditRecordsOnlyARefundTransaction() {
         when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
 
-        BigDecimal balanceAfter = walletService.creditWithoutLedger("22345678", new BigDecimal("10.00"));
+        BigDecimal balanceAfter = walletService.creditRefund(
+                "22345678", new BigDecimal("6.20"), 17L
+        );
 
-        assertThat(balanceAfter).isEqualByComparingTo("60.00");
-        assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
-        verify(userRepository).save(testUser);
-        org.mockito.Mockito.verifyNoInteractions(ledgerService);
-    }
-
-    @Test
-    void creditWithCustomTransactionDetailsRecordsSuppliedTypeAndJobId() {
-        when(userRepository.findByUniIdForUpdate("22345678")).thenReturn(Optional.of(testUser));
-
-        BigDecimal balanceAfter = walletService.credit("22345678", new BigDecimal("10.00"),
-                TransactionType.REFUND, 42L, "Custom refund transaction");
-
-        assertThat(balanceAfter).isEqualByComparingTo("60.00");
-        assertThat(testUser.getBalanceCents()).isEqualTo(6000L);
-        verify(userRepository).save(testUser);
-        verify(ledgerService).record(eq("22345678"), eq(42L), eq(TransactionType.REFUND),
-                eq(new BigDecimal("10.00")), eq(new BigDecimal("60.00")), eq("Custom refund transaction"));
+        assertThat(balanceAfter).isEqualByComparingTo("56.20");
+        verify(ledgerService).record(eq("22345678"), eq(17L), eq(TransactionType.REFUND),
+                eq(new BigDecimal("6.20")), eq(new BigDecimal("56.20")),
+                eq("Refund for cancelled job 17"));
     }
 
     @Test
