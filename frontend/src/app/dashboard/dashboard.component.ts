@@ -179,6 +179,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return job.status === "PAUSED";
   }
 
+  /** True while any pause/resume/cancel request is in flight, so the actions are mutually exclusive. */
+  get isJobActionInFlight(): boolean {
+    return this.controllingJobId !== null || this.cancellingJobId !== null;
+  }
+
   pauseJob(job: DashboardJob): void {
     this.controlJob(job, "pause");
   }
@@ -188,7 +193,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private controlJob(job: DashboardJob, action: "pause" | "resume"): void {
-    if (this.controllingJobId !== null) {
+    if (this.isJobActionInFlight) {
       return;
     }
     this.controllingJobId = job.jobId;
@@ -212,7 +217,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   cancelJob(job: DashboardJob): void {
-    if (!this.isEligibleForCancel(job)) {
+    if (!this.isEligibleForCancel(job) || this.isJobActionInFlight) {
       return;
     }
 
