@@ -12,6 +12,7 @@ import {
   FilamentUsage,
   PrinterCard,
   RefundRequest,
+  UsageTrendPoint,
 } from '../models/admin.model';
 
 @Component({
@@ -41,6 +42,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   pendingRefunds: RefundRequest[] = [];
   isLoadingFinancial = false;
   processingRefundIds = new Set<number>();
+
+  // Usage Trends Data
+  readonly trendRangeOptions = [7, 30, 90];
+  trendDays = 30;
+  trendPoints: UsageTrendPoint[] = [];
+  isLoadingTrends = false;
+  trendsError = false;
 
   // Global & State management
   isInitialLoading = true;
@@ -128,6 +136,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.refreshJobs();
     } else if (tab === 'financial') {
       this.refreshFinancial();
+    } else if (tab === 'trends') {
+      this.loadTrends();
     }
   }
 
@@ -170,7 +180,80 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           this.lastRefreshed = new Date();
         },
       });
+    } else if (this.activeTab === 'trends') {
+      this.adminService.getUsageTrends(this.trendDays).subscribe({
+        next: (points) => {
+          this.trendPoints = points;
+          this.trendsError = false;
+          this.lastRefreshed = new Date();
+        },
+      });
     }
+  }
+
+  // --- Usage Trends Tab ---
+  loadTrends(): void {
+    this.isLoadingTrends = true;
+    this.adminService.getUsageTrends(this.trendDays).subscribe({
+      next: (points) => {
+        this.trendPoints = points;
+        this.trendsError = false;
+        this.isLoadingTrends = false;
+        this.lastRefreshed = new Date();
+      },
+      error: () => {
+        this.trendsError = true;
+        this.isLoadingTrends = false;
+      },
+    });
+  }
+
+  setTrendRange(days: number): void {
+    if (days === this.trendDays) {
+      return;
+    }
+    this.trendDays = days;
+    this.loadTrends();
+  }
+
+  get trendTotalFilament(): number {
+    return this.trendPoints.reduce((sum, p) => sum + (p.filamentGrams || 0), 0);
+  }
+
+  get trendTotalCharged(): number {
+    return this.trendPoints.reduce((sum, p) => sum + (p.charged || 0), 0);
+  }
+
+  get trendTotalRefunded(): number {
+    return this.trendPoints.reduce((sum, p) => sum + (p.refunded || 0), 0);
+  }
+
+  get trendTotalJobs(): number {
+    return this.trendPoints.reduce((sum, p) => sum + (p.jobCount || 0), 0);
+  }
+
+  get hasTrendActivity(): boolean {
+    return this.trendPoints.some((p) => p.jobCount > 0 || p.charged > 0 || p.refunded > 0);
+  }
+
+  /** Height of a bar as a percentage of the largest value in the series (min 2% when non-zero). */
+  barHeight(value: number, series: 'filamentGrams' | 'charged' | 'refunded'): number {
+    const max = Math.max(...this.trendPoints.map((p) => p[series] || 0), 0);
+    if (!value || max <= 0) {
+      return 0;
+    }
+    return Math.max((value / max) * 100, 2);
+  }
+
+  formatTrendDate(date: string): string {
+    const d = new Date(date + 'T00:00:00');
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  }
+
+  /** Show roughly 6 date labels so long ranges stay readable. */
+  showTrendLabel(index: number): boolean {
+    const step = Math.max(Math.ceil(this.trendPoints.length / 6), 1);
+    return index % step === 0 || index === this.trendPoints.length - 1;
   }
 
   // --- Farm Status Tab ---

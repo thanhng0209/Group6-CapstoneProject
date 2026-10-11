@@ -1,6 +1,6 @@
 import { JobStatus } from './job.model';
 
-export type AdminTab = 'farm-status' | 'jobs' | 'financial';
+export type AdminTab = 'farm-status' | 'jobs' | 'financial' | 'trends';
 
 export type PrinterStatus = 'IDLE' | 'PRINTING' | 'MAINTENANCE' | 'OFFLINE';
 
@@ -38,4 +38,12 @@ export interface RefundRequest {
   status: RefundStatus;
   requestedAt: string;
   decidedAt: string | null;
+}
+
+export interface UsageTrendPoint {
+  date: string;
+  filamentGrams: number;
+  charged: number;
+  refunded: number;
+  jobCount: number;
 }
