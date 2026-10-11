@@ -31,6 +31,8 @@ A comprehensive, full-stack 3D Printer Farm Management and Scheduling platform d
   - [Step 4: Log In and Test](#step-4-log-in-and-test)
 - [Automated Testing & Verification](#automated-testing--verification)
 - [API Reference](#api-reference)
+- [Documentation](#documentation)
+- [Use of Generative AI](#use-of-generative-ai)
 
 ---
 
@@ -235,7 +237,7 @@ The backend test suite runs against an isolated in-memory H2 database with mock 
 cd backend
 mvn test
 ```
-*Current test suite: **103 tests passed, 0 failures, 0 errors**.*
+The suite covers unit tests, controller security/validation tests, and integration tests for wallet and job concurrency and refund ledger behaviour. All tests should pass with 0 failures and 0 errors.
 
 ### Compiling Frontend Production Bundle
 Verify TypeScript type checking and Angular AOT template compilation:
@@ -269,3 +271,21 @@ npm run build
 | **Admin** | `GET` | `/api/admin/refunds/pending` | List pending manual refund approval requests | Admin |
 | **Admin** | `POST` | `/api/admin/refunds/{id}/approve` | Approve refund, credit wallet, record transaction | Admin |
 | **Admin** | `POST` | `/api/admin/refunds/{id}/reject` | Reject refund without crediting | Admin |
+
+---
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [User Guide](docs/USER_GUIDE.md) | Students, staff and farm managers: how to log in, top up, submit, cancel, collect and administer |
+| [Known Issues and Future Work](docs/KNOWN_ISSUES.md) | Open items, placeholder values awaiting client decisions, and planned work |
+| [Use of Generative AI](docs/AI_USAGE.md) | Which AI tools were used and how their output was checked |
+
+Setup instructions are in [Step-by-Step Setup Guide](#step-by-step-setup-guide-with-docker) above.
+
+---
+
+## Use of Generative AI
+
+AI tools (Claude Code, GitHub Copilot and Cursor) were used during development for code review, drafting fixes and tests, and drafting issue and PR text. Every AI-drafted change was run against the test suite and went through a pull request before merging. See [docs/AI_USAGE.md](docs/AI_USAGE.md) for details and examples of AI output that was corrected or rejected.
