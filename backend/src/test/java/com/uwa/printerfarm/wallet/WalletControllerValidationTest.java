@@ -32,6 +32,9 @@ class WalletControllerValidationTest {
     private WalletService walletService;
 
     @MockBean
+    private TransactionLedgerService transactionLedgerService;
+
+    @MockBean
     private JwtUtil jwtUtil;
 
     @MockBean
