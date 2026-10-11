@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -165,6 +166,7 @@ public class JobController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Job not found")
     })
     @PostMapping("/{id}/cancel")
+    @Transactional
     public ResponseEntity<?> cancel(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal,
@@ -176,7 +178,7 @@ public class JobController {
                     "code", "REPOSITORY_UNAVAILABLE"));
         }
 
-        Job job = jobRepository.findById(id).orElse(null);
+        Job job = jobRepository.findByIdForUpdate(id).orElse(null);
         if (job == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                     "errors", List.of("Job not found with id: " + id),
@@ -226,6 +228,7 @@ public class JobController {
     }
 
     @PostMapping("/{id}/pause")
+    @Transactional
     public ResponseEntity<?> pause(@PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal,
             Authentication authentication) {
@@ -233,6 +236,7 @@ public class JobController {
     }
 
     @PostMapping("/{id}/resume")
+    @Transactional
     public ResponseEntity<?> resume(@PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal,
             Authentication authentication) {
@@ -279,6 +283,11 @@ public class JobController {
                 "message", "Collection confirmed."));
     }
 
+    /**
+     * Reads the job with a pessimistic lock so a racing pause/resume/cancel on the same
+     * job can't both pass the status check before either one writes (lost update / silent
+     * inconsistent state). Callers (pause/resume) must run inside a transaction.
+     */
     private ResponseEntity<?> controlJob(Long id, JobStatus expectedStatus, boolean pause,
             UserPrincipal principal, Authentication authentication) {
         if (mockPrinterDispatcher == null) {
@@ -287,7 +296,7 @@ public class JobController {
                     "code", "DISPATCHER_UNAVAILABLE"));
         }
 
-        Job job = jobRepository.findById(id).orElse(null);
+        Job job = jobRepository.findByIdForUpdate(id).orElse(null);
         if (job == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                     "errors", List.of("Job not found with id: " + id),
