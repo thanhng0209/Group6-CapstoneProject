@@ -90,6 +90,16 @@
       Financial &amp; Refunds
       <span class="tab-badge" *ngIf="pendingRefunds.length > 0">{{ pendingRefunds.length }}</span>
     </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'trends'"
+      (click)="setActiveTab('trends')"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      Usage Trends
+    </button>
   </nav>
 
   <!-- Loading State -->
@@ -459,6 +469,95 @@
           <p class="empty-sub">There are currently no refund requests awaiting administrator approval.</p>
         </div>
       </div>
+    </section>
+    <!-- ==================== USAGE TRENDS TAB ==================== -->
+    <section *ngIf="activeTab === 'trends'" class="tab-pane">
+      <div class="pane-header">
+        <div>
+          <h2>Usage &amp; Revenue Trends</h2>
+          <p class="pane-subtitle">Filament consumed and money charged or refunded, per day.</p>
+        </div>
+        <div class="trend-range" role="group" aria-label="Trend range">
+          <button
+            *ngFor="let d of trendRangeOptions"
+            type="button"
+            class="range-btn"
+            [class.active]="trendDays === d"
+            (click)="setTrendRange(d)"
+          >
+            {{ d }} days
+          </button>
+        </div>
+      </div>
+
+      <div class="loading-container" *ngIf="isLoadingTrends && trendPoints.length === 0">
+        <div class="spinner"></div>
+        <p>Loading trends...</p>
+      </div>
+
+      <div class="empty-state-box" *ngIf="trendsError">
+        <p>Could not load usage trends. Use Refresh to try again.</p>
+      </div>
+
+      <ng-container *ngIf="!trendsError && trendPoints.length > 0">
+        <div class="finance-grid">
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-label">Filament Used</span></div>
+            <div class="stat-val">{{ trendTotalFilament | number:'1.0-1' }} g</div>
+            <div class="stat-sub">Last {{ trendDays }} days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-label">Charged</span></div>
+            <div class="stat-val text-green">${{ trendTotalCharged.toFixed(2) }}</div>
+            <div class="stat-sub">Print charges in range</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-label">Refunded</span></div>
+            <div class="stat-val text-red">${{ trendTotalRefunded.toFixed(2) }}</div>
+            <div class="stat-sub">Refunds in range</div>
+          </div>
+          <div class="stat-card highlight-blue">
+            <div class="stat-header"><span class="stat-label">Jobs</span></div>
+            <div class="stat-val text-blue">{{ trendTotalJobs }}</div>
+            <div class="stat-sub">Submitted in range</div>
+          </div>
+        </div>
+
+        <p class="trend-empty-note" *ngIf="!hasTrendActivity">
+          No activity in this range yet. Bars appear once jobs are submitted.
+        </p>
+
+        <div class="trend-charts">
+          <div class="trend-chart">
+            <h3>Filament used per day (g)</h3>
+            <div class="bar-row" role="img" aria-label="Filament used per day">
+              <div class="bar-col" *ngFor="let p of trendPoints; let i = index"
+                   [title]="formatTrendDate(p.date) + ': ' + (p.filamentGrams | number:'1.0-1') + ' g'">
+                <div class="bar-track"><div class="bar bar-filament" [style.height.%]="barHeight(p.filamentGrams, 'filamentGrams')"></div></div>
+                <span class="bar-label">{{ showTrendLabel(i) ? formatTrendDate(p.date) : '' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="trend-chart">
+            <h3>Charged vs refunded per day ($)</h3>
+            <div class="bar-row" role="img" aria-label="Charged and refunded per day">
+              <div class="bar-col" *ngFor="let p of trendPoints; let i = index"
+                   [title]="formatTrendDate(p.date) + ': charged $' + p.charged.toFixed(2) + ', refunded $' + p.refunded.toFixed(2)">
+                <div class="bar-track bar-pair">
+                  <div class="bar bar-charged" [style.height.%]="barHeight(p.charged, 'charged')"></div>
+                  <div class="bar bar-refunded" [style.height.%]="barHeight(p.refunded, 'refunded')"></div>
+                </div>
+                <span class="bar-label">{{ showTrendLabel(i) ? formatTrendDate(p.date) : '' }}</span>
+              </div>
+            </div>
+            <div class="trend-legend">
+              <span><i class="swatch bar-charged"></i> Charged</span>
+              <span><i class="swatch bar-refunded"></i> Refunded</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
     </section>
   </main>
 </div>

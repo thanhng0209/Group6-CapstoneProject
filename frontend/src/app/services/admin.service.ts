@@ -9,6 +9,7 @@ import {
   PrinterActivity,
   PrinterCard,
   RefundRequest,
+  UsageTrendPoint,
 } from '../models/admin.model';
 
 const API_BASE = 'http://localhost:8080/api';
@@ -88,6 +89,15 @@ export class AdminService {
    */
   getFilamentUsage(): Observable<FilamentUsage> {
     return this.http.get<FilamentUsage>(`${API_BASE}/admin/filament-usage`);
+  }
+
+  /**
+   * Fetches one aggregated point per day for the last `days` days
+   * (filament grams, amount charged/refunded, job count).
+   */
+  getUsageTrends(days = 30): Observable<UsageTrendPoint[]> {
+    const params = new HttpParams().set('days', days);
+    return this.http.get<UsageTrendPoint[]>(`${API_BASE}/admin/usage-trends`, { params });
   }
 
   /**
